@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#b45309"/><stop offset="100%" style="stop-color:#d97706"/></linearGradient></defs>
+  <rect width="1920" height="1080" fill="url(#g)"/>
+  <path d="M760 500 L960 350 L1160 500 Z" fill="rgba(255,255,255,0.1)"/>
+  <path d="M780 520 L960 390 L1140 520 Z" fill="rgba(255,255,255,0.08)"/>
+  <circle cx="960" cy="620" r="80" fill="rgba(255,255,255,0.1)"/>
+  <text x="960" y="640" text-anchor="middle" fill="#d97706" font-size="36" font-family="Arial,sans-serif" font-weight="bold">₹</text>
+  <text x="960" y="740" text-anchor="middle" fill="white" font-size="48" font-family="Arial,sans-serif" font-weight="bold">Investment Opportunity</text>
+  <text x="960" y="800" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="24" font-family="Arial,sans-serif">Build a Profitable Future with Ather</text>
+</svg>

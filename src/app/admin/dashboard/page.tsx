@@ -52,21 +52,23 @@ export default function AdminDashboardPage() {
         {data && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard label="Total Leads" value={data.stats.totalLeads} color="bg-blue-500" />
-              <StatCard label="New Leads" value={data.stats.newLeads} color="bg-emerald-500" />
-              <StatCard label="Contacted" value={data.stats.contactedLeads} color="bg-amber-500" />
+              <StatCard label="Total Applications" value={data.stats.totalLeads} color="bg-blue-500" />
+              <StatCard label="New Applications" value={data.stats.newLeads} color="bg-emerald-500" />
               <StatCard label="Approved" value={data.stats.approvedLeads} color="bg-green-500" />
               <StatCard label="Rejected" value={data.stats.rejectedLeads} color="bg-red-500" />
-              <StatCard label="This Week" value={data.stats.thisWeek} color="bg-purple-500" />
-              <StatCard label="This Month" value={data.stats.thisMonth} color="bg-indigo-500" />
+              <StatCard label="Contact Messages" value={data.stats.contactMessages} color="bg-purple-500" />
+              <StatCard label="Unread Messages" value={data.stats.unreadMessages} color="bg-amber-500" />
+              <StatCard label="Newsletter Subs" value={data.stats.newsletterSubscribers} color="bg-indigo-500" />
               <StatCard label="Conversion Rate" value={`${data.stats.conversionRate}%`} color="bg-teal-500" />
+              <StatCard label="This Week" value={data.stats.thisWeek} color="bg-pink-500" />
+              <StatCard label="This Month" value={data.stats.thisMonth} color="bg-cyan-500" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white rounded-xl border p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Leads</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Applications</h2>
                 {data.recentLeads.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No leads yet</p>
+                  <p className="text-gray-500 text-sm">No applications yet</p>
                 ) : (
                   <div className="space-y-3">
                     {data.recentLeads.map((lead: any) => (
@@ -90,7 +92,7 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="bg-white rounded-xl border p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Leads by Status</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Applications by Status</h2>
                 {data.leadsByStatus.length === 0 ? (
                   <p className="text-gray-500 text-sm">No data yet</p>
                 ) : (

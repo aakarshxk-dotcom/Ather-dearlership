@@ -9,16 +9,38 @@ datasource db {
 }
 
 model Admin {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  password  String
-  name      String
-  email     String   @default("admin@atherdealership.in")
-  role      String   @default("admin")
-  isActive  Boolean  @default(true)
-  lastLogin DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String          @id @default(cuid())
+  username             String          @unique
+  password             String
+  name                 String
+  email                String          @default("admin@atherdealership.in")
+  role                 String          @default("admin")
+  isActive             Boolean         @default(true)
+  activeSessionId      String?         @unique
+  activeSessionExpires DateTime?
+  lastLogin            DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  sessions             AdminSession[]
+}
+
+model AdminSession {
+  id         String   @id @default(cuid())
+  adminId    String
+  sessionId  String   @unique
+  deviceId   String
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  lastActive DateTime @default(now())
+  expiresAt  DateTime
+  isValid    Boolean  @default(true)
+
+  admin      Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([sessionId])
+  @@index([deviceId])
 }
 
 model FranchiseLead {

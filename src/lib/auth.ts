@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
+import { randomBytes } from 'crypto';
 
 const secret = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-secret-change-in-production'
@@ -10,6 +11,8 @@ export interface JWTPayload {
   username: string;
   name: string;
   role: string;
+  sessionId?: string;
+  deviceId?: string;
 }
 
 export async function createToken(payload: JWTPayload): Promise<string> {
@@ -34,6 +37,10 @@ export async function getAuthUser(): Promise<JWTPayload | null> {
   const token = cookieStore.get('auth-token')?.value;
   if (!token) return null;
   return verifyToken(token);
+}
+
+export function generateSessionId(): string {
+  return randomBytes(32).toString('hex');
 }
 
 export function createAuthCookie(token: string) {

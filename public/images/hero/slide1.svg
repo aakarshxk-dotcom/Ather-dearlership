@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#059669"/><stop offset="100%" style="stop-color:#047857"/></linearGradient></defs>
+  <rect width="1920" height="1080" fill="url(#g)"/>
+  <circle cx="960" cy="440" r="180" fill="rgba(255,255,255,0.1)"/>
+  <path d="M860 440 L960 360 L1060 440 L960 520 Z" fill="rgba(255,255,255,0.3)"/>
+  <text x="960" y="700" text-anchor="middle" fill="white" font-size="48" font-family="Arial,sans-serif" font-weight="bold">Ather Showroom</text>
+  <text x="960" y="760" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="24" font-family="Arial,sans-serif">Modern EV Showroom Experience</text>
+</svg>

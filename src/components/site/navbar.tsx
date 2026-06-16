@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ArrowRight, ChevronRight } from 'lucide-react';
+import { Menu, X, ArrowRight, ChevronRight, LayoutDashboard, Shield, LogOut } from 'lucide-react';
 import { useAppStore } from '@/store/app';
 
 const navLinks = [
@@ -19,10 +19,11 @@ const navLinks = [
 ] as const;
 
 export default function Navbar() {
-  const { setViewMode } = useAppStore();
+  const { setViewMode, adminAuthenticated, adminName, setAdminAuthenticated, authChecked } = useAppStore();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -36,25 +37,19 @@ export default function Navbar() {
   useEffect(() => {
     const sectionIds = navLinks.map((l) => l.href.replace('#', ''));
     const observers: IntersectionObserver[] = [];
-
     sectionIds.forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
       const observer = new IntersectionObserver(
         ([entry]) => {
-          if (entry.isIntersecting) {
-            setActiveSection(id);
-          }
+          if (entry.isIntersecting) setActiveSection(id);
         },
         { threshold: 0.2, rootMargin: '-80px 0px -50% 0px' }
       );
       observer.observe(el);
       observers.push(observer);
     });
-
-    return () => {
-      observers.forEach((o) => o.disconnect());
-    };
+    return () => observers.forEach((o) => o.disconnect());
   }, []);
 
   useEffect(() => {
@@ -63,19 +58,23 @@ export default function Navbar() {
     } else {
       document.body.style.overflow = '';
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
+    return () => { document.body.style.overflow = ''; };
   }, [mobileOpen]);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(d => {
+        setAdminAuthenticated(d.authenticated, d.user?.name || 'Admin');
+      })
+      .catch(() => setAdminAuthenticated(false));
+  }, [setAdminAuthenticated]);
 
   const handleNavClick = useCallback(
     (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
       e.preventDefault();
       const id = href.replace('#', '');
-      const el = document.getElementById(id);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
-      }
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
       setMobileOpen(false);
     },
     []
@@ -85,6 +84,22 @@ export default function Navbar() {
     setMobileOpen(false);
     setViewMode('apply');
   }, [setViewMode]);
+
+  const handleDashboardClick = useCallback(() => {
+    setMobileOpen(false);
+    window.location.href = '/admin/dashboard';
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    setLoggingOut(true);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      setAdminAuthenticated(false);
+    } finally {
+      setLoggingOut(false);
+      window.location.href = '/';
+    }
+  }, [setAdminAuthenticated]);
 
   return (
     <>
@@ -119,9 +134,7 @@ export default function Navbar() {
                   href={link.href}
                   onClick={(e) => handleNavClick(e, link.href)}
                   className={`relative px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-                    isActive
-                      ? 'text-[#059669]'
-                      : 'text-gray-500 hover:text-[#059669]'
+                    isActive ? 'text-[#059669]' : 'text-gray-500 hover:text-[#059669]'
                   }`}
                 >
                   {link.label}
@@ -135,13 +148,45 @@ export default function Navbar() {
             })}
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            {adminAuthenticated ? (
+              <>
+                <span className="hidden md:block text-xs text-gray-400 mr-1">{adminName}</span>
+                <button
+                  onClick={handleDashboardClick}
+                  className="inline-flex items-center gap-1.5 text-xs md:text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 md:px-4 py-2 rounded-lg transition-colors cursor-pointer"
+                  title="Dashboard"
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                  <span className="hidden sm:inline">Dashboard</span>
+                </button>
+                <button
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="inline-flex items-center gap-1.5 text-xs md:text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 md:px-4 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                  title="Logout"
+                >
+                  <LogOut className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                  <span className="hidden sm:inline">{loggingOut ? '...' : 'Logout'}</span>
+                </button>
+              </>
+            ) : (
+              <a
+                href="/admin/login"
+                className="inline-flex items-center gap-1.5 text-xs md:text-sm font-medium text-gray-600 hover:text-emerald-600 bg-white/80 hover:bg-white border border-gray-200 hover:border-emerald-300 px-2.5 md:px-4 py-2 rounded-lg transition-all cursor-pointer"
+                title="Admin Login"
+              >
+                <Shield className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Admin Sign In</span>
+              </a>
+            )}
+
             <button
               onClick={handleApplyClick}
-              className="btn-luxury-primary text-sm px-5 py-2.5"
+              className="btn-luxury-primary text-xs md:text-sm px-3 md:px-5 py-2 md:py-2.5"
             >
               Apply Now
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </button>
 
             <button
@@ -180,12 +225,42 @@ export default function Navbar() {
                     }`}
                   >
                     {link.label}
-                    {isActive && (
-                      <ChevronRight className="w-4 h-4 text-[#059669]" />
-                    )}
+                    {isActive && <ChevronRight className="w-4 h-4 text-[#059669]" />}
                   </a>
                 );
               })}
+
+              <hr className="my-2 border-gray-100" />
+
+              {adminAuthenticated ? (
+                <>
+                  <a
+                    href="/admin/dashboard"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                  >
+                    Dashboard
+                    <LayoutDashboard className="w-4 h-4" />
+                  </a>
+                  <button
+                    onClick={handleLogout}
+                    disabled={loggingOut}
+                    className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    {loggingOut ? 'Logging out...' : 'Logout'}
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                <a
+                  href="/admin/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-gray-600 hover:text-[#059669] hover:bg-gray-50 transition-colors"
+                >
+                  Admin Sign In
+                  <Shield className="w-4 h-4" />
+                </a>
+              )}
 
               <button
                 onClick={handleApplyClick}
