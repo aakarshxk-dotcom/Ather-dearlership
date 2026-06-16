@@ -1,5 +1,5 @@
 param(
-    [string]$DatabaseUrl = "postgresql://postgres:password@localhost:5432/ather_dealership?schema=public"
+    [string]$DatabaseUrl = "postgresql://postgres:12345678****%23%23%23%23%24%24%24%24@db.cwpyludakwuynjkuninc.supabase.co:5432/postgres"
 )
 
 Write-Host "===== Ather Energy Dealership - Setup Script =====" -ForegroundColor Green
