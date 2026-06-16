@@ -42,7 +42,7 @@ export default function BlogPage() {
                     </div>
                     <h2 className="text-xl font-bold text-gray-900 mb-2">{post.title}</h2>
                     {post.excerpt && <p className="text-gray-600 text-sm mb-4">{post.excerpt}</p>}
-                    <div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: post.content }} />
+                    <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">{post.content}</div>
                   </div>
                 </article>
               ))}

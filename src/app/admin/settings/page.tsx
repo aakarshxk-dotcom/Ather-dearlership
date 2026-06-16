@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminLayout from '@/components/admin/admin-layout';
-import { createHash } from 'crypto';
 
 export default function AdminSettingsPage() {
   const router = useRouter();
@@ -39,10 +38,10 @@ export default function AdminSettingsPage() {
     }
 
     try {
-      const res = await fetch('/api/admin/leads', {
+      const res = await fetch('/api/auth/change-password', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: user.id, password: newPassword, currentPassword }),
+        body: JSON.stringify({ currentPassword, newPassword }),
       });
       const data = await res.json();
       if (res.ok) {

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminLayout from '@/components/admin/admin-layout';
-import { db } from '@/lib/db';
 
 export default function AdminDashboardPage() {
   const router = useRouter();

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: ather-dealership
+    runtime: node
+    repo: https://github.com/aakarshxk-dotcom/Ather-dearlership
+    branch: main
+    plan: free
+    buildCommand: npm install --legacy-peer-deps && npm run build
+    startCommand: npx tsx scripts/deploy.ts; node .next/standalone/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: SEED_ADMIN_USERNAME
+        value: admin
+      - key: SEED_ADMIN_PASSWORD
+        value: admin123
