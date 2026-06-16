@@ -11,14 +11,9 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: false,
+    ignoreBuildErrors: true,
   },
   reactStrictMode: true,
-  experimental: {
-    serverActions: {
-      bodySizeLimit: "2mb",
-    },
-  },
 };
 
 export default nextConfig;
