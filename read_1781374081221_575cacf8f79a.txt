@@ -1,0 +1,899 @@
+     1→'use client';
+     2→
+     3→import React, { useRef, useMemo, useState, useCallback } from 'react';
+     4→import { Canvas, useFrame, useThree } from '@react-three/fiber';
+     5→import { Stars, Grid, Environment } from '@react-three/drei';
+     6→import * as THREE from 'three';
+     7→import { motion, AnimatePresence } from 'framer-motion';
+     8→import { ChevronLeft, ChevronRight, Zap, Gauge, Battery, Clock, Cpu } from 'lucide-react';
+     9→
+    10→/* ═══════════════════════════════════════════════════════════════════
+    11→   MODEL DATA
+    12→   ═══════════════════════════════════════════════════════════════════ */
+    13→
+    14→const models = [
+    15→  {
+    16→    id: '450x-gen3',
+    17→    name: 'Ather 450X Gen 3',
+    18→    tagline: 'The Flagship Performance Scooter',
+    19→    price: '₹1,89,999',
+    20→    topSpeed: '90 km/h',
+    21→    range: '150 km',
+    22→    chargingTime: '3.3 hrs',
+    23→    motorPower: '6.2 kW',
+    24→    color: '#00FF88',
+    25→    accentColor: '#00CC6A',
+    26→    features: ['7" Touchscreen', 'Google Maps', 'Warp Mode', '4G Connectivity'],
+    27→    badge: 'FLAGSHIP',
+    28→  },
+    29→  {
+    30→    id: '450s',
+    31→    name: 'Ather 450S',
+    32→    tagline: 'Smart Performance, Accessible Price',
+    33→    price: '₹1,39,999',
+    34→    topSpeed: '80 km/h',
+    35→    range: '115 km',
+    36→    chargingTime: '4.5 hrs',
+    37→    motorPower: '4.3 kW',
+    38→    color: '#00E5FF',
+    39→    accentColor: '#0099CC',
+    40→    features: ['Ride Statistics', 'Bluetooth', 'Over-the-air Updates', 'Regenerative Braking'],
+    41→    badge: 'POPULAR',
+    42→  },
+    43→  {
+    44→    id: 'rizta',
+    45→    name: 'Ather Rizta',
+    46→    tagline: 'Designed for the Family',
+    47→    price: '₹1,09,999',
+    48→    topSpeed: '70 km/h',
+    49→    range: '125 km',
+    50→    chargingTime: '5.2 hrs',
+    51→    motorPower: '3.5 kW',
+    52→    color: '#FFD700',
+    53→    accentColor: '#CC9900',
+    54→    features: ['Extra Storage', 'Comfortable Seat', 'Ride Modes', 'Smart Key'],
+    55→    badge: 'NEW',
+    56→  },
+    57→];
+    58→
+    59→/* ═══════════════════════════════════════════════════════════════════
+    60→   DYNAMIC SCOOTER — Abstract 3D EV Scooter from primitives
+    61→   ═══════════════════════════════════════════════════════════════════ */
+    62→
+    63→function DynamicScooter({
+    64→  color,
+    65→  accentColor,
+    66→  isActive,
+    67→  index,
+    68→  activeIndex,
+    69→}: {
+    70→  color: string;
+    71→  accentColor: string;
+    72→  isActive: boolean;
+    73→  index: number;
+    74→  activeIndex: number;
+    75→}) {
+    76→  const groupRef = useRef<THREE.Group>(null);
+    77→  const { pointer } = useThree();
+    78→
+    79→  /* ── Materials (memoized per scooter instance) ── */
+    80→  const bodyMat = useMemo(
+    81→    () =>
+    82→      new THREE.MeshStandardMaterial({
+    83→        color: '#0A0E27',
+    84→        metalness: 0.92,
+    85→        roughness: 0.08,
+    86→      }),
+    87→    []
+    88→  );
+    89→
+    90→  const darkMat = useMemo(
+    91→    () =>
+    92→      new THREE.MeshStandardMaterial({
+    93→        color: '#151833',
+    94→        metalness: 0.9,
+    95→        roughness: 0.1,
+    96→      }),
+    97→    []
+    98→  );
+    99→
+   100→  const chromeMat = useMemo(
+   101→    () =>
+   102→      new THREE.MeshStandardMaterial({
+   103→        color: '#333344',
+   104→        metalness: 0.98,
+   105→        roughness: 0.02,
+   106→      }),
+   107→    []
+   108→  );
+   109→
+   110→  const glowMat = useMemo(
+   111→    () =>
+   112→      new THREE.MeshStandardMaterial({
+   113→        color,
+   114→        emissive: color,
+   115→        emissiveIntensity: 2,
+   116→        toneMapped: false,
+   117→      }),
+   118→    [color]
+   119→  );
+   120→
+   121→  const accentMat = useMemo(
+   122→    () =>
+   123→      new THREE.MeshStandardMaterial({
+   124→        color: accentColor,
+   125→        emissive: accentColor,
+   126→        emissiveIntensity: 1.5,
+   127→        toneMapped: false,
+   128→      }),
+   129→    [accentColor]
+   130→  );
+   131→
+   132→  const batteryMat = useMemo(
+   133→    () =>
+   134→      new THREE.MeshStandardMaterial({
+   135→        color,
+   136→        emissive: color,
+   137→        emissiveIntensity: 0.5,
+   138→        transparent: true,
+   139→        opacity: 0.6,
+   140→        toneMapped: false,
+   141→      }),
+   142→    [color]
+   143→  );
+   144→
+   145→  const tailLightMat = useMemo(
+   146→    () =>
+   147→      new THREE.MeshStandardMaterial({
+   148→        color: '#FF3333',
+   149→        emissive: '#FF3333',
+   150→        emissiveIntensity: 3,
+   151→        toneMapped: false,
+   152→      }),
+   153→    []
+   154→  );
+   155→
+   156→  /* ── Calculate target position based on active state ── */
+   157→  const offset = index - activeIndex;
+   158→  const targetX = -offset * 3.2;
+   159→  const targetScale = isActive ? 1.0 : 0.75;
+   160→  const targetOpacity = isActive ? 1 : 0.4;
+   161→
+   162→  useFrame(() => {
+   163→    if (!groupRef.current) return;
+   164→
+   165→    // Lerp position
+   166→    const pos = groupRef.current.position;
+   167→    pos.x = THREE.MathUtils.lerp(pos.x, targetX, 0.06);
+   168→    pos.y = THREE.MathUtils.lerp(pos.y, isActive ? 0.2 : -0.1, 0.06);
+   169→
+   170→    // Lerp scale
+   171→    const s = groupRef.current.scale.x;
+   172→    const newScale = THREE.MathUtils.lerp(s, targetScale, 0.06);
+   173→    groupRef.current.scale.setScalar(newScale);
+   174→
+   175→    // Auto-rotate
+   176→    groupRef.current.rotation.y += isActive ? 0.005 : 0.001;
+   177→
+   178→    // Mouse follow (only when active)
+   179→    if (isActive) {
+   180→      groupRef.current.rotation.x = THREE.MathUtils.lerp(
+   181→        groupRef.current.rotation.x,
+   182→        pointer.y * 0.12,
+   183→        0.04
+   184→      );
+   185→      groupRef.current.rotation.z = THREE.MathUtils.lerp(
+   186→        groupRef.current.rotation.z,
+   187→        -pointer.x * 0.08,
+   188→        0.04
+   189→      );
+   190→    } else {
+   191→      groupRef.current.rotation.x = THREE.MathUtils.lerp(
+   192→        groupRef.current.rotation.x,
+   193→        0,
+   194→        0.04
+   195→      );
+   196→      groupRef.current.rotation.z = THREE.MathUtils.lerp(
+   197→        groupRef.current.rotation.z,
+   198→        0,
+   199→        0.04
+   200→      );
+   201→    }
+   202→
+   203→  });
+   204→
+   205→  return (
+   206→    <group ref={groupRef} position={[targetX, 0.2, 0]}>
+   207→      {/* ── Main body — sleek elongated deck ── */}
+   208→      <mesh position={[0, 0.35, 0]} material={bodyMat}>
+   209→        <boxGeometry args={[0.7, 0.18, 2.2]} />
+   210→      </mesh>
+   211→
+   212→      {/* ── Front fairing — tapered nose ── */}
+   213→      <mesh position={[0, 0.4, 0.95]} material={darkMat}>
+   214→        <boxGeometry args={[0.5, 0.28, 0.65]} />
+   215→      </mesh>
+   216→
+   217→      {/* Front fairing top cap */}
+   218→      <mesh position={[0, 0.55, 1.05]} material={bodyMat}>
+   219→        <boxGeometry args={[0.42, 0.04, 0.35]} />
+   220→      </mesh>
+   221→
+   222→      {/* ── Rear body panel ── */}
+   223→      <mesh position={[0, 0.38, -0.7]} material={darkMat}>
+   224→        <boxGeometry args={[0.6, 0.2, 0.8]} />
+   225→      </mesh>
+   226→
+   227→      {/* Rear panel top edge */}
+   228→      <mesh position={[0, 0.5, -0.75]} material={bodyMat}>
+   229→        <boxGeometry args={[0.52, 0.04, 0.6]} />
+   230→      </mesh>
+   231→
+   232→      {/* ── Seat ── */}
+   233→      <mesh position={[0, 0.53, -0.25]} material={bodyMat}>
+   234→        <boxGeometry args={[0.34, 0.06, 0.85]} />
+   235→      </mesh>
+   236→
+   237→      {/* Seat cushion (slightly wider/rounded) */}
+   238→      <mesh position={[0, 0.57, -0.25]} material={darkMat}>
+   239→        <boxGeometry args={[0.3, 0.035, 0.7]} />
+   240→      </mesh>
+   241→
+   242→      {/* ── Steering column ── */}
+   243→      <mesh
+   244→        position={[0, 0.75, 0.95]}
+   245→        rotation={[0.12, 0, 0]}
+   246→        material={chromeMat}
+   247→      >
+   248→        <cylinderGeometry args={[0.035, 0.04, 0.65, 12]} />
+   249→      </mesh>
+   250→
+   251→      {/* ── Handlebar — horizontal bar ── */}
+   252→      <mesh
+   253→        position={[0, 1.12, 0.95]}
+   254→        rotation={[0, 0, Math.PI / 2]}
+   255→        material={chromeMat}
+   256→      >
+   257→        <cylinderGeometry args={[0.022, 0.022, 0.65, 12]} />
+   258→      </mesh>
+   259→
+   260→      {/* Handlebar end grips — glowing spheres */}
+   261→      <mesh position={[-0.32, 1.12, 0.95]} material={glowMat}>
+   262→        <sphereGeometry args={[0.04, 12, 12]} />
+   263→      </mesh>
+   264→      <mesh position={[0.32, 1.12, 0.95]} material={glowMat}>
+   265→        <sphereGeometry args={[0.04, 12, 12]} />
+   266→      </mesh>
+   267→
+   268→      {/* ── Dashboard / instrument cluster — glowing display ── */}
+   269→      <mesh position={[0, 0.85, 1.1]} material={glowMat}>
+   270→        <boxGeometry args={[0.28, 0.06, 0.04]} />
+   271→      </mesh>
+   272→
+   273→      {/* Dashboard bezel */}
+   274→      <mesh position={[0, 0.85, 1.08]} material={chromeMat}>
+   275→        <boxGeometry args={[0.32, 0.09, 0.02]} />
+   276→      </mesh>
+   277→
+   278→      {/* ── Battery pack — translucent glow underneath ── */}
+   279→      <mesh position={[0, 0.12, 0.05]} material={batteryMat}>
+   280→        <boxGeometry args={[0.52, 0.1, 1.3]} />
+   281→      </mesh>
+   282→
+   283→      {/* Battery underglow light */}
+   284→      {isActive && (
+   285→        <pointLight
+   286→          position={[0, 0.05, 0.05]}
+   287→          color={color}
+   288→          intensity={1.5}
+   289→          distance={3}
+   290→          decay={2}
+   291→        />
+   292→      )}
+   293→
+   294→      {/* ── Front wheel — torus + hub ── */}
+   295→      <mesh
+   296→        position={[0, 0, 1.25]}
+   297→        rotation={[Math.PI / 2, 0, 0]}
+   298→        material={chromeMat}
+   299→      >
+   300→        <torusGeometry args={[0.26, 0.055, 10, 28]} />
+   301→      </mesh>
+   302→      <mesh position={[0, 0, 1.25]} material={glowMat}>
+   303→        <cylinderGeometry args={[0.04, 0.04, 0.11, 12]} />
+   304→      </mesh>
+   305→
+   306→      {/* ── Rear wheel — torus + hub ── */}
+   307→      <mesh
+   308→        position={[0, 0, -1.05]}
+   309→        rotation={[Math.PI / 2, 0, 0]}
+   310→        material={chromeMat}
+   311→      >
+   312→        <torusGeometry args={[0.26, 0.055, 10, 28]} />
+   313→      </mesh>
+   314→      <mesh position={[0, 0, -1.05]} material={glowMat}>
+   315→        <cylinderGeometry args={[0.04, 0.04, 0.11, 12]} />
+   316→      </mesh>
+   317→
+   318→      {/* ── Front fork ── */}
+   319→      <mesh
+   320→        position={[0, 0.45, 1.12]}
+   321→        rotation={[0.12, 0, 0]}
+   322→        material={chromeMat}
+   323→      >
+   324→        <cylinderGeometry args={[0.02, 0.02, 0.7, 8]} />
+   325→      </mesh>
+   326→
+   327→      {/* Front fork secondary */}
+   328→      <mesh
+   329→        position={[0.06, 0.46, 1.12]}
+   330→        rotation={[0.12, 0, 0]}
+   331→        material={chromeMat}
+   332→      >
+   333→        <cylinderGeometry args={[0.015, 0.015, 0.65, 8]} />
+   334→      </mesh>
+   335→
+   336→      {/* ── Rear suspension arm ── */}
+   337→      <mesh
+   338→        position={[0, 0.15, -0.85]}
+   339→        rotation={[0.05, 0, 0]}
+   340→        material={chromeMat}
+   341→      >
+   342→        <cylinderGeometry args={[0.018, 0.018, 0.5, 8]} />
+   343→      </mesh>
+   344→
+   345→      {/* ── Neon accent lines on both sides ── */}
+   346→      {/* Left side running light */}
+   347→      <mesh position={[0.36, 0.36, 0.15]} material={accentMat}>
+   348→        <boxGeometry args={[0.008, 0.008, 1.3]} />
+   349→      </mesh>
+   350→      {/* Right side running light */}
+   351→      <mesh position={[-0.36, 0.36, 0.15]} material={accentMat}>
+   352→        <boxGeometry args={[0.008, 0.008, 1.3]} />
+   353→      </mesh>
+   354→      {/* Front accent bar */}
+   355→      <mesh position={[0, 0.36, 0.85]} material={accentMat}>
+   356→        <boxGeometry args={[0.72, 0.008, 0.015]} />
+   357→      </mesh>
+   358→      {/* Rear accent bar */}
+   359→      <mesh position={[0, 0.3, -0.85]} material={glowMat}>
+   360→        <boxGeometry args={[0.72, 0.008, 0.015]} />
+   361→      </mesh>
+   362→
+   363→      {/* ── Tail light ── */}
+   364→      <mesh position={[0, 0.42, -1.1]} material={tailLightMat}>
+   365→        <boxGeometry args={[0.12, 0.025, 0.015]} />
+   366→      </mesh>
+   367→
+   368→      {/* Tail light bar extension */}
+   369→      <mesh position={[0, 0.42, -1.1]} material={tailLightMat}>
+   370→        <boxGeometry args={[0.45, 0.015, 0.015]} />
+   371→      </mesh>
+   372→
+   373→      {/* ── Headlight — point light ── */}
+   374→      <pointLight
+   375→        position={[0, 0.55, 1.5]}
+   376→        color={color}
+   377→        intensity={isActive ? 5 : 1}
+   378→        distance={8}
+   379→        decay={2}
+   380→      />
+   381→
+   382→      {/* Headlight mesh */}
+   383→      <mesh position={[0, 0.52, 1.28]} material={glowMat}>
+   384→        <boxGeometry args={[0.2, 0.05, 0.02]} />
+   385→      </mesh>
+   386→
+   387→      {/* ── Foot peg area ── */}
+   388→      <mesh position={[0.2, 0.27, 0.2]} material={darkMat}>
+   389→        <boxGeometry args={[0.15, 0.02, 0.3]} />
+   390→      </mesh>
+   391→      <mesh position={[-0.2, 0.27, 0.2]} material={darkMat}>
+   392→        <boxGeometry args={[0.15, 0.02, 0.3]} />
+   393→      </mesh>
+   394→    </group>
+   395→  );
+   396→}
+   397→
+   398→/* ═══════════════════════════════════════════════════════════════════
+   399→   SCENE — Lighting, Stars, Grid, All 3 Scooters
+   400→   ═══════════════════════════════════════════════════════════════════ */
+   401→
+   402→function Scene({ activeIndex }: { activeIndex: number }) {
+   403→  const activeColor = models[activeIndex].color;
+   404→
+   405→  return (
+   406→    <>
+   407→      <color attach="background" args={['#050816']} />
+   408→      <fog attach="fog" args={['#050816', 10, 45]} />
+   409→      <ambientLight intensity={0.15} />
+   410→
+   411→      <Stars
+   412→        radius={100}
+   413→        depth={60}
+   414→        count={3000}
+   415→        factor={4}
+   416→        saturation={0}
+   417→        fade
+   418→        speed={0.6}
+   419→      />
+   420→
+   421→      <Grid
+   422→        position={[0, -0.3, 0]}
+   423→        cellSize={0.6}
+   424→        cellThickness={0.4}
+   425→        cellColor={activeColor}
+   426→        sectionSize={3}
+   427→        sectionThickness={1.2}
+   428→        sectionColor={activeColor}
+   429→        fadeDistance={30}
+   430→        fadeStrength={1.5}
+   431→        infiniteGrid
+   432→      />
+   433→
+   434→      {/* All 3 scooters in the scene */}
+   435→      {models.map((model, i) => (
+   436→        <DynamicScooter
+   437→          key={model.id}
+   438→          color={model.color}
+   439→          accentColor={model.accentColor}
+   440→          isActive={i === activeIndex}
+   441→          index={i}
+   442→          activeIndex={activeIndex}
+   443→        />
+   444→      ))}
+   445→
+   446→      {/* Scene accent lights */}
+   447→      <pointLight
+   448→        position={[4, 4, 3]}
+   449→        color={activeColor}
+   450→        intensity={1.2}
+   451→        distance={15}
+   452→        decay={2}
+   453→      />
+   454→      <pointLight
+   455→        position={[-4, 3, -2]}
+   456→        color={models[(activeIndex + 1) % 3].color}
+   457→        intensity={0.6}
+   458→        distance={12}
+   459→        decay={2}
+   460→      />
+   461→      <pointLight
+   462→        position={[0, 6, -4]}
+   463→        color="#ffffff"
+   464→        intensity={0.3}
+   465→        distance={20}
+   466→        decay={2}
+   467→      />
+   468→
+   469→      <Environment preset="night" />
+   470→    </>
+   471→  );
+   472→}
+   473→
+   474→/* ═══════════════════════════════════════════════════════════════════
+   475→   ANIMATION VARIANTS
+   476→   ═══════════════════════════════════════════════════════════════════ */
+   477→
+   478→const infoVariants = {
+   479→  enter: (direction: number) => ({
+   480→    x: direction > 0 ? 80 : -80,
+   481→    opacity: 0,
+   482→  }),
+   483→  center: {
+   484→    x: 0,
+   485→    opacity: 1,
+   486→    transition: {
+   487→      duration: 0.45,
+   488→      ease: [0.25, 0.46, 0.45, 0.94],
+   489→    },
+   490→  },
+   491→  exit: (direction: number) => ({
+   492→    x: direction > 0 ? -80 : 80,
+   493→    opacity: 0,
+   494→    transition: {
+   495→      duration: 0.3,
+   496→      ease: [0.25, 0.46, 0.45, 0.94],
+   497→    },
+   498→  }),
+   499→};
+   500→
+   501→const pillVariants = {
+   502→  initial: { scale: 0.8, opacity: 0 },
+   503→  animate: { scale: 1, opacity: 1, transition: { duration: 0.3 } },
+   504→  exit: { scale: 0.8, opacity: 0, transition: { duration: 0.2 } },
+   505→};
+   506→
+   507→const specCard = {
+   508→  hidden: { opacity: 0, y: 12 },
+   509→  visible: (i: number) => ({
+   510→    opacity: 1,
+   511→    y: 0,
+   512→    transition: { delay: i * 0.07, duration: 0.4, ease: 'easeOut' },
+   513→  }),
+   514→};
+   515→
+   516→const badgeColors: Record<string, string> = {
+   517→  FLAGSHIP: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
+   518→  POPULAR: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40',
+   519→  NEW: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40',
+   520→};
+   521→
+   522→/* ═══════════════════════════════════════════════════════════════════
+   523→   SPEC ICON HELPER
+   524→   ═══════════════════════════════════════════════════════════════════ */
+   525→
+   526→function SpecIcon({ type, color }: { type: string; color: string }) {
+   527→  const props = { size: 16, color, strokeWidth: 2 };
+   528→  switch (type) {
+   529→    case 'speed':
+   530→      return <Gauge {...props} />;
+   531→    case 'range':
+   532→      return <Zap {...props} />;
+   533→    case 'charging':
+   534→      return <Clock {...props} />;
+   535→    case 'motor':
+   536→      return <Cpu {...props} />;
+   537→    case 'battery':
+   538→      return <Battery {...props} />;
+   539→    default:
+   540→      return <Zap {...props} />;
+   541→  }
+   542→}
+   543→
+   544→/* ═══════════════════════════════════════════════════════════════════
+   545→   MAIN EXPORT — ScooterSlider
+   546→   ═══════════════════════════════════════════════════════════════════ */
+   547→
+   548→export function ScooterSlider() {
+   549→  const [activeIndex, setActiveIndex] = useState(0);
+   550→  const [direction, setDirection] = useState(0);
+   551→
+   552→  const activeModel = models[activeIndex];
+   553→
+   554→  const goTo = useCallback(
+   555→    (newIndex: number) => {
+   556→      setDirection(newIndex > activeIndex ? 1 : -1);
+   557→      setActiveIndex(newIndex);
+   558→    },
+   559→    [activeIndex]
+   560→  );
+   561→
+   562→  const goNext = useCallback(() => {
+   563→    setDirection(1);
+   564→    setActiveIndex((prev) => (prev + 1) % models.length);
+   565→  }, []);
+   566→
+   567→  const goPrev = useCallback(() => {
+   568→    setDirection(-1);
+   569→    setActiveIndex((prev) => (prev - 1 + models.length) % models.length);
+   570→  }, []);
+   571→
+   572→  return (
+   573→    <section
+   574→      id="models"
+   575→      className="relative w-full min-h-[800px] md:min-h-[900px] overflow-hidden bg-midnight"
+   576→    >
+   577→      {/* ── 3D Canvas — absolute fill ── */}
+   578→      <div className="absolute inset-0" style={{ touchAction: 'none' }}>
+   579→        <Canvas
+   580→          camera={{ position: [5, 3, 5], fov: 38 }}
+   581→          gl={{ antialias: true, alpha: false }}
+   582→          dpr={[1, 2]}
+   583→        >
+   584→          <Scene activeIndex={activeIndex} />
+   585→        </Canvas>
+   586→      </div>
+   587→
+   588→      {/* ── Gradient overlays for readability ── */}
+   589→      <div className="absolute inset-0 bg-gradient-to-r from-[#050816] via-transparent to-[#050816]/50 pointer-events-none z-[5]" />
+   590→      <div className="absolute inset-0 bg-gradient-to-t from-[#050816] via-transparent to-[#050816]/40 pointer-events-none z-[5]" />
+   591→
+   592→      {/* ══════════════════════════════════════════════════════════════
+   593→          UI OVERLAY
+   594→          ══════════════════════════════════════════════════════════════ */}
+   595→      <div className="relative z-10 flex flex-col w-full h-full min-h-[800px] md:min-h-[900px]">
+   596→        {/* ── Section Title (top, centered) ── */}
+   597→        <motion.div
+   598→          initial={{ opacity: 0, y: -20 }}
+   599→          whileInView={{ opacity: 1, y: 0 }}
+   600→          viewport={{ once: true }}
+   601→          transition={{ duration: 0.6, ease: 'easeOut' }}
+   602→          className="absolute top-6 md:top-8 left-1/2 -translate-x-1/2 z-20"
+   603→        >
+   604→          <div className="glass-card-static px-6 py-3 md:px-8 md:py-4 text-center">
+   605→            <h2 className="text-lg md:text-xl font-bold text-premium-silver tracking-wide">
+   606→              Explore Our Lineup
+   607→            </h2>
+   608→            <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
+   609→              Choose Your Electric Ride
+   610→            </p>
+   611→          </div>
+   612→        </motion.div>
+   613→
+   614→        {/* ── Left Arrow Button ── */}
+   615→        <motion.button
+   616→          onClick={goPrev}
+   617→          className="absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-20 w-11 h-11 md:w-14 md:h-14 rounded-full glass-card-static flex items-center justify-center cursor-pointer group hover:scale-110 transition-transform duration-200"
+   618→          whileHover={{ scale: 1.15 }}
+   619→          whileTap={{ scale: 0.95 }}
+   620→          aria-label="Previous model"
+   621→        >
+   622→          <ChevronLeft
+   623→            size={22}
+   624→            className="text-premium-silver group-hover:text-white transition-colors md:w-6 md:h-6"
+   625→          />
+   626→        </motion.button>
+   627→
+   628→        {/* ── Right Arrow Button ── */}
+   629→        <motion.button
+   630→          onClick={goNext}
+   631→          className="absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-20 w-11 h-11 md:w-14 md:h-14 rounded-full glass-card-static flex items-center justify-center cursor-pointer group hover:scale-110 transition-transform duration-200"
+   632→          whileHover={{ scale: 1.15 }}
+   633→          whileTap={{ scale: 0.95 }}
+   634→          aria-label="Next model"
+   635→        >
+   636→          <ChevronRight
+   637→            size={22}
+   638→            className="text-premium-silver group-hover:text-white transition-colors md:w-6 md:h-6"
+   639→          />
+   640→        </motion.button>
+   641→
+   642→        {/* ── Left Info Panel (desktop: absolute, mobile: bottom) ── */}
+   643→        <div className="hidden md:block absolute left-10 lg:left-16 xl:left-20 top-1/2 -translate-y-1/2 z-20 w-[380px] lg:w-[420px]">
+   644→          <AnimatePresence mode="wait" custom={direction}>
+   645→            <motion.div
+   646→              key={activeModel.id}
+   647→              custom={direction}
+   648→              variants={infoVariants}
+   649→              initial="enter"
+   650→              animate="center"
+   651→              exit="exit"
+   652→            >
+   653→              {/* Badge */}
+   654→              <div
+   655→                className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold tracking-widest border mb-4 ${badgeColors[activeModel.badge] || 'bg-white/10 text-white border-white/20'}`}
+   656→              >
+   657→                {activeModel.badge}
+   658→              </div>
+   659→
+   660→              {/* Model name */}
+   661→              <h3 className="text-3xl lg:text-4xl font-black tracking-tight leading-tight gradient-text-green">
+   662→                {activeModel.name}
+   663→              </h3>
+   664→
+   665→              {/* Tagline */}
+   666→              <p className="mt-2 text-base text-premium-silver/70">
+   667→                {activeModel.tagline}
+   668→              </p>
+   669→
+   670→              {/* Price */}
+   671→              <motion.p
+   672→                className="mt-4 text-3xl lg:text-4xl font-black text-neon-green neon-text-green"
+   673→                initial={{ scale: 0.9, opacity: 0 }}
+   674→                animate={{ scale: 1, opacity: 1 }}
+   675→                transition={{ delay: 0.2, duration: 0.4 }}
+   676→              >
+   677→                {activeModel.price}
+   678→                <span className="text-sm font-normal text-muted-foreground ml-2">
+   679→                  ex-showroom
+   680→                </span>
+   681→              </motion.p>
+   682→
+   683→              {/* Specs Grid */}
+   684→              <div className="mt-6 grid grid-cols-2 gap-3">
+   685→                {[
+   686→                  { label: 'Top Speed', value: activeModel.topSpeed, type: 'speed' },
+   687→                  { label: 'Range', value: activeModel.range, type: 'range' },
+   688→                  { label: 'Charging', value: activeModel.chargingTime, type: 'charging' },
+   689→                  { label: 'Motor', value: activeModel.motorPower, type: 'motor' },
+   690→                ].map((spec, i) => (
+   691→                  <motion.div
+   692→                    key={spec.label}
+   693→                    custom={i}
+   694→                    variants={specCard}
+   695→                    initial="hidden"
+   696→                    animate="visible"
+   697→                    className="glass-card-static p-3 rounded-lg"
+   698→                  >
+   699→                    <div className="flex items-center gap-2 mb-1">
+   700→                      <SpecIcon type={spec.type} color={activeModel.color} />
+   701→                      <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
+   702→                        {spec.label}
+   703→                      </span>
+   704→                    </div>
+   705→                    <span
+   706→                      className="text-lg font-bold"
+   707→                      style={{ color: activeModel.color }}
+   708→                    >
+   709→                      {spec.value}
+   710→                    </span>
+   711→                  </motion.div>
+   712→                ))}
+   713→              </div>
+   714→
+   715→              {/* Features pills */}
+   716→              <div className="mt-5 flex flex-wrap gap-2">
+   717→                {activeModel.features.map((feature, i) => (
+   718→                  <motion.span
+   719→                    key={feature}
+   720→                    initial={{ opacity: 0, scale: 0.8 }}
+   721→                    animate={{ opacity: 1, scale: 1 }}
+   722→                    transition={{ delay: 0.35 + i * 0.06, duration: 0.3 }}
+   723→                    className="glass-card-static px-3 py-1.5 rounded-full text-xs font-medium text-premium-silver flex items-center gap-1.5"
+   724→                  >
+   725→                    <span
+   726→                      className="w-1.5 h-1.5 rounded-full inline-block"
+   727→                      style={{ backgroundColor: activeModel.color }}
+   728→                    />
+   729→                    {feature}
+   730→                  </motion.span>
+   731→                ))}
+   732→              </div>
+   733→
+   734→              {/* CTA Button */}
+   735→              <motion.button
+   736→                className="btn-neon-green mt-6 w-full text-sm cursor-pointer"
+   737→                initial={{ opacity: 0, y: 10 }}
+   738→                animate={{ opacity: 1, y: 0 }}
+   739→                transition={{ delay: 0.5, duration: 0.4 }}
+   740→              >
+   741→                Configure &amp; Book Now
+   742→              </motion.button>
+   743→            </motion.div>
+   744→          </AnimatePresence>
+   745→        </div>
+   746→
+   747→        {/* ── Mobile Info Panel (visible only on mobile) ── */}
+   748→        <div className="md:hidden mt-auto z-20 px-4 pb-24">
+   749→          <AnimatePresence mode="wait" custom={direction}>
+   750→            <motion.div
+   751→              key={activeModel.id}
+   752→              custom={direction}
+   753→              variants={infoVariants}
+   754→              initial="enter"
+   755→              animate="center"
+   756→              exit="exit"
+   757→              className="text-center"
+   758→            >
+   759→              {/* Badge */}
+   760→              <div
+   761→                className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold tracking-widest border mb-2 ${badgeColors[activeModel.badge] || 'bg-white/10 text-white border-white/20'}`}
+   762→              >
+   763→                {activeModel.badge}
+   764→              </div>
+   765→
+   766→              <h3 className="text-2xl sm:text-3xl font-black tracking-tight gradient-text-green">
+   767→                {activeModel.name}
+   768→              </h3>
+   769→              <p className="mt-1 text-sm text-premium-silver/70">
+   770→                {activeModel.tagline}
+   771→              </p>
+   772→
+   773→              <p className="mt-3 text-3xl font-black text-neon-green neon-text-green">
+   774→                {activeModel.price}
+   775→              </p>
+   776→
+   777→              {/* Specs — horizontal scroll on mobile */}
+   778→              <div className="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+   779→                {[
+   780→                  { label: 'Speed', value: activeModel.topSpeed, type: 'speed' },
+   781→                  { label: 'Range', value: activeModel.range, type: 'range' },
+   782→                  { label: 'Charge', value: activeModel.chargingTime, type: 'charging' },
+   783→                  { label: 'Motor', value: activeModel.motorPower, type: 'motor' },
+   784→                ].map((spec) => (
+   785→                  <div
+   786→                    key={spec.label}
+   787→                    className="glass-card-static p-2.5 rounded-lg min-w-[100px] flex-shrink-0"
+   788→                  >
+   789→                    <div className="flex items-center justify-center gap-1 mb-0.5">
+   790→                      <SpecIcon type={spec.type} color={activeModel.color} />
+   791→                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+   792→                        {spec.label}
+   793→                      </span>
+   794→                    </div>
+   795→                    <span
+   796→                      className="text-base font-bold block"
+   797→                      style={{ color: activeModel.color }}
+   798→                    >
+   799→                      {spec.value}
+   800→                    </span>
+   801→                  </div>
+   802→                ))}
+   803→              </div>
+   804→
+   805→              {/* Features — compact pills */}
+   806→              <div className="mt-3 flex flex-wrap gap-1.5 justify-center">
+   807→                {activeModel.features.map((feature) => (
+   808→                  <span
+   809→                    key={feature}
+   810→                    className="glass-card-static px-2.5 py-1 rounded-full text-[10px] font-medium text-premium-silver flex items-center gap-1"
+   811→                  >
+   812→                    <span
+   813→                      className="w-1.5 h-1.5 rounded-full inline-block"
+   814→                      style={{ backgroundColor: activeModel.color }}
+   815→                    />
+   816→                    {feature}
+   817→                  </span>
+   818→                ))}
+   819→              </div>
+   820→
+   821→              <button className="btn-neon-green mt-4 w-full text-sm cursor-pointer">
+   822→                Configure &amp; Book Now
+   823→              </button>
+   824→            </motion.div>
+   825→          </AnimatePresence>
+   826→        </div>
+   827→
+   828→        {/* ── Bottom Selector Bar ── */}
+   829→        <motion.div
+   830→          initial={{ opacity: 0, y: 30 }}
+   831→          whileInView={{ opacity: 1, y: 0 }}
+   832→          viewport={{ once: true }}
+   833→          transition={{ delay: 0.3, duration: 0.6 }}
+   834→          className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 z-20"
+   835→        >
+   836→          <div className="glass-card-static p-2 md:p-2.5 flex gap-2 md:gap-3 items-center rounded-full">
+   837→            {models.map((model, i) => {
+   838→              const isActive = i === activeIndex;
+   839→              return (
+   840→                <motion.button
+   841→                  key={model.id}
+   842→                  onClick={() => goTo(i)}
+   843→                  className={`
+   844→                    relative flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 rounded-full
+   845→                    text-xs md:text-sm font-semibold transition-all duration-300 cursor-pointer
+   846→                    ${
+   847→                      isActive
+   848→                        ? 'bg-white/10 shadow-lg'
+   849→                        : 'hover:bg-white/5'
+   850→                    }
+   851→                  `}
+   852→                  style={
+   853→                    isActive
+   854→                      ? {
+   855→                          boxShadow: `0 0 20px ${model.color}33, 0 0 40px ${model.color}11, inset 0 0 20px ${model.color}11`,
+   856→                        }
+   857→                      : undefined
+   858→                  }
+   859→                  whileHover={{ scale: 1.05 }}
+   860→                  whileTap={{ scale: 0.95 }}
+   861→                  aria-label={`Select ${model.name}`}
+   862→                >
+   863→                  {/* Active glow border */}
+   864→                  {isActive && (
+   865→                    <motion.div
+   866→                      layoutId="activeBorder"
+   867→                      className="absolute inset-0 rounded-full pointer-events-none"
+   868→                      style={{
+   869→                        border: `1.5px solid ${model.color}88`,
+   870→                        boxShadow: `0 0 12px ${model.color}44`,
+   871→                      }}
+   872→                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+   873→                    />
+   874→                  )}
+   875→
+   876→                  {/* Color dot */}
+   877→                  <span
+   878→                    className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full flex-shrink-0"
+   879→                    style={{
+   880→                      backgroundColor: model.color,
+   881→                      boxShadow: isActive ? `0 0 8px ${model.color}` : 'none',
+   882→                    }}
+   883→                  />
+   884→
+   885→                  {/* Model name */}
+   886→                  <span
+   887→                    className={isActive ? 'text-white' : 'text-premium-silver/70'}
+   888→                  >
+   889→                    {model.name.replace('Ather ', '')}
+   890→                  </span>
+   891→                </motion.button>
+   892→              );
+   893→            })}
+   894→          </div>
+   895→        </motion.div>
+   896→      </div>
+   897→    </section>
+   898→  );
+   899→}

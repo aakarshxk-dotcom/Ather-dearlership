@@ -1,0 +1,1189 @@
+     1→'use client';
+     2→
+     3→import { motion, useInView, animate, AnimatePresence, type Variants } from 'framer-motion';
+     4→import { useRef, useState, useEffect, useCallback } from 'react';
+     5→import {
+     6→  TrendingUp,
+     7→  Shield,
+     8→  Award,
+     9→  ArrowRight,
+    10→  CheckCircle2,
+    11→  Building2,
+    12→  Target,
+    13→  BarChart3,
+    14→  GraduationCap,
+    15→  Package,
+    16→  Megaphone,
+    17→  MapPin,
+    18→  Phone,
+    19→  Mail,
+    20→  Clock,
+    21→  ChevronDown,
+    22→  Quote,
+    23→  Star,
+    24→  IndianRupee,
+    25→  X,
+    26→  MessageCircle,
+    27→} from 'lucide-react';
+    28→
+    29→/* ═══════════════════════════════════════════════════════════════════════
+    30→   SHARED ANIMATION VARIANTS
+    31→   ═══════════════════════════════════════════════════════════════════════ */
+    32→
+    33→const fadeUp: Variants = {
+    34→  hidden: { opacity: 0, y: 30 },
+    35→  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const } },
+    36→};
+    37→
+    38→const staggerContainer: Variants = {
+    39→  hidden: {},
+    40→  visible: { transition: { staggerChildren: 0.12 } },
+    41→};
+    42→
+    43→/* ═══════════════════════════════════════════════════════════════════════
+    44→   SAFE DATA — BigInt handling
+    45→   ═══════════════════════════════════════════════════════════════════════ */
+    46→
+    47→function safeData(data: unknown): unknown {
+    48→  if (data === null || data === undefined) return data;
+    49→  if (typeof data === 'bigint') return data.toString();
+    50→  if (Array.isArray(data)) return data.map(safeData);
+    51→  if (typeof data === 'object') {
+    52→    const obj: Record<string, unknown> = {};
+    53→    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    54→      obj[key] = safeData(value);
+    55→    }
+    56→    return obj;
+    57→  }
+    58→  return data;
+    59→}
+    60→
+    61→/* ═══════════════════════════════════════════════════════════════════════
+    62→   ANIMATED COUNTER
+    63→   ═══════════════════════════════════════════════════════════════════════ */
+    64→
+    65→function AnimatedCounter({
+    66→  target,
+    67→  prefix = '',
+    68→  suffix = '',
+    69→}: {
+    70→  target: number;
+    71→  prefix?: string;
+    72→  suffix?: string;
+    73→}) {
+    74→  const ref = useRef<HTMLSpanElement>(null);
+    75→  const isInView = useInView(ref, { once: true, margin: '-50px' });
+    76→
+    77→  useEffect(() => {
+    78→    if (!isInView || !ref.current) return;
+    79→    const controls = animate(0, target, {
+    80→      duration: 2,
+    81→      ease: 'easeOut',
+    82→      onUpdate(value) {
+    83→        if (ref.current) {
+    84→          ref.current.textContent =
+    85→            prefix + Math.floor(value).toLocaleString('en-IN') + suffix;
+    86→        }
+    87→      },
+    88→    });
+    89→    return () => controls.stop();
+    90→  }, [isInView, target, prefix, suffix]);
+    91→
+    92→  return (
+    93→    <span ref={ref}>
+    94→      {prefix}0{suffix}
+    95→    </span>
+    96→  );
+    97→}
+    98→
+    99→/* ═══════════════════════════════════════════════════════════════════════
+   100→   SECTION 1 — STATS (floating card overlapping hero)
+   101→   ═══════════════════════════════════════════════════════════════════════ */
+   102→
+   103→export function StatsSection() {
+   104→  const containerRef = useRef<HTMLDivElement>(null);
+   105→  const isInView = useInView(containerRef, { once: true, margin: '-80px' });
+   106→
+   107→  const stats = [
+   108→    { icon: <IndianRupee className="w-5 h-5 text-emerald-600" />, value: 25, prefix: '₹', suffix: 'L+', label: 'Investment Starting From' },
+   109→    { icon: <MapPin className="w-5 h-5 text-emerald-600" />, value: 100, prefix: '', suffix: '+', label: 'Cities Covered' },
+   110→    { icon: <Building2 className="w-5 h-5 text-emerald-600" />, value: 500, prefix: '', suffix: '+', label: 'Showrooms Opened' },
+   111→    { icon: <Star className="w-5 h-5 text-emerald-600" />, value: 98, prefix: '', suffix: '%', label: 'Partner Satisfaction' },
+   112→  ];
+   113→
+   114→  return (
+   115→    <section id="about" className="-mt-20 relative z-20">
+   116→      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+   117→        <motion.div
+   118→          ref={containerRef}
+   119→          initial={{ opacity: 0, y: 30 }}
+   120→          animate={isInView ? { opacity: 1, y: 0 } : {}}
+   121→          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+   122→          className="bg-white rounded-[32px] shadow-[0_8px_40px_rgba(0,0,0,0.06)] p-8 md:p-12"
+   123→        >
+   124→          <motion.div
+   125→            variants={staggerContainer}
+   126→            initial="hidden"
+   127→            animate={isInView ? 'visible' : 'hidden'}
+   128→            className="grid grid-cols-2 md:grid-cols-4 gap-8"
+   129→          >
+   130→            {stats.map((stat) => (
+   131→              <motion.div key={stat.label} variants={fadeUp} className="text-center">
+   132→                <div className="rounded-full bg-emerald-50 p-3 w-fit mx-auto">
+   133→                  {stat.icon}
+   134→                </div>
+   135→                <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mt-3">
+   136→                  {stat.label}
+   137→                </p>
+   138→                <div className="text-3xl md:text-4xl font-black text-slate-900 mt-1">
+   139→                  <AnimatedCounter target={stat.value} prefix={stat.prefix} suffix={stat.suffix} />
+   140→                </div>
+   141→              </motion.div>
+   142→            ))}
+   143→          </motion.div>
+   144→        </motion.div>
+   145→      </div>
+   146→    </section>
+   147→  );
+   148→}
+   149→
+   150→/* ═══════════════════════════════════════════════════════════════════════
+   151→   SECTION 2 — WHY PARTNER WITH ATHER ENERGY
+   152→   ═══════════════════════════════════════════════════════════════════════ */
+   153→
+   154→export function WhyPartnerSection() {
+   155→  const containerRef = useRef<HTMLDivElement>(null);
+   156→  const isInView = useInView(containerRef, { once: true, margin: '-80px' });
+   157→
+   158→  const features = [
+   159→    {
+   160→      icon: <TrendingUp className="w-6 h-6 text-emerald-600" />,
+   161→      title: 'High ROI',
+   162→      description:
+   163→        'Average returns of 15-20% annually with multiple revenue streams including vehicle sales, accessories, service, and insurance.',
+   164→    },
+   165→    {
+   166→      icon: <Award className="w-6 h-6 text-emerald-600" />,
+   167→      title: 'EV Market Leader',
+   168→      description:
+   169→        'Ather is India\'s leading electric scooter brand with 40%+ YoY growth in the EV two-wheeler segment.',
+   170→    },
+   171→    {
+   172→      icon: <Shield className="w-6 h-6 text-emerald-600" />,
+   173→      title: 'End-to-End Support',
+   174→      description:
+   175→        'From showroom setup to staff training, marketing to inventory — complete business support.',
+   176→    },
+   177→    {
+   178→      icon: <Megaphone className="w-6 h-6 text-emerald-600" />,
+   179→      title: 'Marketing Support',
+   180→      description:
+   181→        'National and regional campaigns, digital marketing, co-branded materials, and launch events.',
+   182→    },
+   183→    {
+   184→      icon: <GraduationCap className="w-6 h-6 text-emerald-600" />,
+   185→      title: 'Training Programs',
+   186→      description:
+   187→        'Comprehensive 4-week training covering sales, service, operations, and customer management.',
+   188→    },
+   189→    {
+   190→      icon: <Package className="w-6 h-6 text-emerald-600" />,
+   191→      title: 'Service Support',
+   192→      description:
+   193→        'Dedicated service infrastructure, spare parts supply chain, and technical support system.',
+   194→    },
+   195→  ];
+   196→
+   197→  return (
+   198→    <section className="bg-white py-20 md:py-28">
+   199→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   200→        <motion.div
+   201→          initial={{ opacity: 0, y: 20 }}
+   202→          animate={isInView ? { opacity: 1, y: 0 } : {}}
+   203→          transition={{ duration: 0.6 }}
+   204→          className="text-center"
+   205→        >
+   206→          <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900">
+   207→            Why Partner With Ather Energy?
+   208→          </h2>
+   209→          <p className="text-gray-500 text-center mt-4 text-lg">
+   210→            Join India&apos;s fastest-growing EV revolution.
+   211→          </p>
+   212→        </motion.div>
+   213→
+   214→        <motion.div
+   215→          ref={containerRef}
+   216→          variants={staggerContainer}
+   217→          initial="hidden"
+   218→          animate={isInView ? 'visible' : 'hidden'}
+   219→          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-14"
+   220→        >
+   221→          {features.map((feature) => (
+   222→            <motion.div key={feature.title} variants={fadeUp} className="luxury-card p-7">
+   223→              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-5">
+   224→                {feature.icon}
+   225→              </div>
+   226→              <h3 className="text-lg font-bold text-slate-900 mb-2">{feature.title}</h3>
+   227→              <p className="text-sm text-gray-500 leading-relaxed">{feature.description}</p>
+   228→            </motion.div>
+   229→          ))}
+   230→        </motion.div>
+   231→      </div>
+   232→    </section>
+   233→  );
+   234→}
+   235→
+   236→/* ═══════════════════════════════════════════════════════════════════════
+   237→   SECTION 3 — TRUST / FEATURED IN
+   238→   ═══════════════════════════════════════════════════════════════════════ */
+   239→
+   240→export function TrustSection() {
+   241→  const logos = ['Forbes', 'Business Standard', 'ET Auto', 'Moneycontrol', 'Inc42', 'YourStory'];
+   242→
+   243→  return (
+   244→    <section className="bg-[#FAFAFA] py-16">
+   245→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   246→        <p className="text-sm uppercase tracking-widest text-gray-400 text-center font-semibold">
+   247→          Featured In
+   248→        </p>
+   249→        <div className="flex flex-wrap justify-center items-center gap-8 md:gap-14 mt-10">
+   250→          {logos.map((name) => (
+   251→            <span
+   252→              key={name}
+   253→              className="text-xl md:text-2xl font-bold text-gray-300 tracking-tight hover:text-gray-400 transition cursor-default select-none"
+   254→            >
+   255→              {name}
+   256→            </span>
+   257→          ))}
+   258→        </div>
+   259→      </div>
+   260→    </section>
+   261→  );
+   262→}
+   263→
+   264→/* ═══════════════════════════════════════════════════════════════════════
+   265→   SECTION 4 — PROCESS (7 Steps Timeline)
+   266→   ═══════════════════════════════════════════════════════════════════════ */
+   267→
+   268→export function ProcessSection() {
+   269→  const containerRef = useRef<HTMLDivElement>(null);
+   270→  const isInView = useInView(containerRef, { once: true, margin: '-80px' });
+   271→
+   272→  const steps = [
+   273→    { num: 1, title: 'Apply', desc: 'Submit your application online' },
+   274→    { num: 2, title: 'Verification', desc: 'Profile & background verification' },
+   275→    { num: 3, title: 'Review', desc: 'Investment capacity assessment' },
+   276→    { num: 4, title: 'Approval', desc: 'Location inspection & approval' },
+   277→    { num: 5, title: 'Agreement', desc: 'Franchise agreement signing' },
+   278→    { num: 6, title: 'Setup', desc: 'Showroom setup & training (4-6 weeks)' },
+   279→    { num: 7, title: 'Launch', desc: 'Grand opening & business launch' },
+   280→  ];
+   281→
+   282→  return (
+   283→    <section id="process" className="bg-white py-20 md:py-28">
+   284→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   285→        <motion.div
+   286→          initial={{ opacity: 0, y: 20 }}
+   287→          animate={isInView ? { opacity: 1, y: 0 } : {}}
+   288→          transition={{ duration: 0.6 }}
+   289→          className="text-center"
+   290→        >
+   291→          <h2 className="text-3xl md:text-4xl font-black text-slate-900">
+   292→            Dealership Process
+   293→          </h2>
+   294→          <p className="text-gray-500 text-center mt-4">
+   295→            From application to launch in 7 simple steps.
+   296→          </p>
+   297→        </motion.div>
+   298→
+   299→        {/* ── Desktop: Horizontal Stepper ── */}
+   300→        <motion.div
+   301→          ref={containerRef}
+   302→          variants={staggerContainer}
+   303→          initial="hidden"
+   304→          animate={isInView ? 'visible' : 'hidden'}
+   305→          className="hidden md:block mt-14"
+   306→        >
+   307→          <div className="relative">
+   308→            {/* Horizontal connecting line */}
+   309→            <div className="absolute top-7 left-[calc(100%/14)] right-[calc(100%/14)] h-0.5 bg-gray-200" />
+   310→
+   311→            <div className="grid grid-cols-7 gap-2">
+   312→              {steps.map((step) => (
+   313→                <motion.div key={step.num} variants={fadeUp} className="relative flex flex-col items-center text-center px-1">
+   314→                  <div className="w-14 h-14 rounded-full bg-[#059669] text-white font-bold text-lg flex items-center justify-center z-10 shadow-lg shadow-emerald-600/20">
+   315→                    {step.num}
+   316→                  </div>
+   317→                  <h3 className="text-sm font-bold text-slate-900 mt-4">{step.title}</h3>
+   318→                  <p className="text-xs text-gray-400 mt-1 max-w-[120px]">{step.desc}</p>
+   319→                </motion.div>
+   320→              ))}
+   321→            </div>
+   322→          </div>
+   323→        </motion.div>
+   324→
+   325→        {/* ── Mobile: Vertical Timeline ── */}
+   326→        <motion.div
+   327→          variants={staggerContainer}
+   328→          initial="hidden"
+   329→          animate={isInView ? 'visible' : 'hidden'}
+   330→          className="md:hidden mt-14"
+   331→        >
+   332→          <div className="relative pl-8">
+   333→            {/* Vertical line */}
+   334→            <div className="absolute left-[21px] top-2 bottom-2 w-0.5 bg-gray-200" />
+   335→
+   336→            <div className="space-y-8">
+   337→              {steps.map((step) => (
+   338→                <motion.div key={step.num} variants={fadeUp} className="relative flex items-start gap-4">
+   339→                  <div className="absolute -left-8 top-0 w-11 h-11 rounded-full bg-[#059669] text-white font-bold text-sm flex items-center justify-center z-10 shadow-lg shadow-emerald-600/20 shrink-0">
+   340→                    {step.num}
+   341→                  </div>
+   342→                  <div className="pt-1">
+   343→                    <h3 className="text-sm font-bold text-slate-900 mb-1">{step.title}</h3>
+   344→                    <p className="text-xs text-gray-400 leading-relaxed">{step.desc}</p>
+   345→                  </div>
+   346→                </motion.div>
+   347→              ))}
+   348→            </div>
+   349→          </div>
+   350→        </motion.div>
+   351→      </div>
+   352→    </section>
+   353→  );
+   354→}
+   355→
+   356→/* ═══════════════════════════════════════════════════════════════════════
+   357→   SECTION 5 — INVESTMENT & RETURNS
+   358→   ═══════════════════════════════════════════════════════════════════════ */
+   359→
+   360→export function InvestmentSection() {
+   361→  const containerRef = useRef<HTMLDivElement>(null);
+   362→  const isInView = useInView(containerRef, { once: true, margin: '-80px' });
+   363→
+   364→  const cards = [
+   365→    {
+   366→      icon: <Target className="w-6 h-6" />,
+   367→      title: 'Investment Range',
+   368→      amount: '₹25 - 50 Lakhs',
+   369→      description: 'Includes showroom setup, inventory, deposits & working capital',
+   370→    },
+   371→    {
+   372→      icon: <TrendingUp className="w-6 h-6" />,
+   373→      title: 'Revenue Potential',
+   374→      amount: '₹15-25L/Month',
+   375→      description: 'Average monthly revenue for established metro showrooms',
+   376→    },
+   377→    {
+   378→      icon: <BarChart3 className="w-6 h-6" />,
+   379→      title: 'Profit Margin',
+   380→      amount: '12-18% Gross',
+   381→      description: 'On vehicle sales plus 25-30% on accessories & service',
+   382→    },
+   383→    {
+   384→      icon: <Clock className="w-6 h-6" />,
+   385→      title: 'Break Even',
+   386→      amount: '12-18 Months',
+   387→      description: 'Most partners achieve profitability within the first year',
+   388→    },
+   389→  ];
+   390→
+   391→  return (
+   392→    <section id="investment" className="bg-[#FAFAFA] py-20 md:py-28">
+   393→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   394→        <motion.div
+   395→          initial={{ opacity: 0, y: 20 }}
+   396→          animate={isInView ? { opacity: 1, y: 0 } : {}}
+   397→          transition={{ duration: 0.6 }}
+   398→          className="text-center"
+   399→        >
+   400→          <h2 className="text-3xl md:text-4xl font-black text-slate-900">
+   401→            Investment &amp; Returns
+   402→          </h2>
+   403→          <p className="text-gray-500 text-center mt-4">
+   404→            Transparent pricing with a clear path to profitability
+   405→          </p>
+   406→        </motion.div>
+   407→
+   408→        <motion.div
+   409→          ref={containerRef}
+   410→          variants={staggerContainer}
+   411→          initial="hidden"
+   412→          animate={isInView ? 'visible' : 'hidden'}
+   413→          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-14"
+   414→        >
+   415→          {cards.map((card) => (
+   416→            <motion.div
+   417→              key={card.title}
+   418→              variants={fadeUp}
+   419→              className="bg-white rounded-2xl p-7 border border-gray-100 hover:shadow-lg transition-all"
+   420→            >
+   421→              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
+   422→                {card.icon}
+   423→              </div>
+   424→              <h3 className="text-lg font-bold text-slate-900">{card.title}</h3>
+   425→              <p className="text-2xl font-black text-[#059669] mt-2">{card.amount}</p>
+   426→              <p className="text-sm text-gray-500 mt-3 leading-relaxed">{card.description}</p>
+   427→            </motion.div>
+   428→          ))}
+   429→        </motion.div>
+   430→      </div>
+   431→    </section>
+   432→  );
+   433→}
+   434→
+   435→/* ═══════════════════════════════════════════════════════════════════════
+   436→   SECTION 6 — GALLERY PREVIEW
+   437→   ═══════════════════════════════════════════════════════════════════════ */
+   438→
+   439→interface GalleryImage {
+   440→  id: number;
+   441→  title: string;
+   442→  category: string;
+   443→  imageUrl: string;
+   444→}
+   445→
+   446→const galleryCategories = ['All', 'Showroom', 'Interior', 'Exterior', 'Launch Events'];
+   447→
+   448→const fallbackGallery: GalleryImage[] = [
+   449→  { id: 1, title: 'Ather Experience Center — Mumbai', category: 'Showroom', imageUrl: '/placeholder-gallery-1.jpg' },
+   450→  { id: 2, title: 'Premium Interior Design', category: 'Interior', imageUrl: '/placeholder-gallery-2.jpg' },
+   451→  { id: 3, title: 'Ather 450X Display Area', category: 'Exterior', imageUrl: '/placeholder-gallery-3.jpg' },
+   452→  { id: 4, title: 'Grand Opening — Bangalore', category: 'Launch Events', imageUrl: '/placeholder-gallery-4.jpg' },
+   453→  { id: 5, title: 'Service Bay Setup', category: 'Interior', imageUrl: '/placeholder-gallery-5.jpg' },
+   454→  { id: 6, title: 'Ather Space — Delhi NCR', category: 'Showroom', imageUrl: '/placeholder-gallery-6.jpg' },
+   455→];
+   456→
+   457→export function GalleryPreviewSection() {
+   458→  const sectionRef = useRef<HTMLDivElement>(null);
+   459→  const isInView = useInView(sectionRef, { once: true, margin: '-80px' });
+   460→  const [images, setImages] = useState<GalleryImage[]>(fallbackGallery);
+   461→  const [activeCategory, setActiveCategory] = useState('All');
+   462→  const [lightboxImage, setLightboxImage] = useState<GalleryImage | null>(null);
+   463→
+   464→  useEffect(() => {
+   465→    async function fetchGallery() {
+   466→      try {
+   467→        const res = await fetch('/api/gallery');
+   468→        if (res.ok) {
+   469→          const data = await res.json();
+   470→          const cleaned = safeData(data) as GalleryImage[];
+   471→          if (Array.isArray(cleaned) && cleaned.length > 0) {
+   472→            setImages(cleaned);
+   473→            return;
+   474→          }
+   475→        }
+   476→      } catch {
+   477→        // fetch failed — use fallback
+   478→      }
+   479→    }
+   480→    fetchGallery();
+   481→  }, []);
+   482→
+   483→  const filtered = activeCategory === 'All'
+   484→    ? images
+   485→    : images.filter((img) => img.category === activeCategory);
+   486→
+   487→  return (
+   488→    <section id="gallery" className="bg-white py-20 md:py-28">
+   489→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   490→        <motion.div
+   491→          initial={{ opacity: 0, y: 20 }}
+   492→          animate={isInView ? { opacity: 1, y: 0 } : {}}
+   493→          transition={{ duration: 0.6 }}
+   494→          className="text-center"
+   495→        >
+   496→          <h2 className="text-3xl md:text-4xl font-black text-slate-900">
+   497→            Our Showrooms
+   498→          </h2>
+   499→          <p className="text-gray-500 text-center mt-4">
+   500→            Experience the Ather Energy dealership standard.
+   501→          </p>
+   502→        </motion.div>
+   503→
+   504→        {/* Category Tabs */}
+   505→        <div className="flex flex-wrap justify-center gap-2 mt-10">
+   506→          {galleryCategories.map((cat) => (
+   507→            <button
+   508→              key={cat}
+   509→              type="button"
+   510→              onClick={() => setActiveCategory(cat)}
+   511→              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+   512→                activeCategory === cat
+   513→                  ? 'bg-[#059669] text-white'
+   514→                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+   515→              }`}
+   516→            >
+   517→              {cat}
+   518→            </button>
+   519→          ))}
+   520→        </div>
+   521→
+   522→        {/* Masonry Grid */}
+   523→        <motion.div
+   524→          ref={sectionRef}
+   525→          initial="hidden"
+   526→          animate={isInView ? 'visible' : 'hidden'}
+   527→          variants={staggerContainer}
+   528→          className="masonry-grid mt-10"
+   529→        >
+   530→          {filtered.map((img) => (
+   531→            <motion.div
+   532→              key={img.id}
+   533→              variants={fadeUp}
+   534→              className="luxury-card overflow-hidden group cursor-pointer"
+   535→              onClick={() => setLightboxImage(img)}
+   536→            >
+   537→              <img
+   538→                src={img.imageUrl}
+   539→                alt={img.title}
+   540→                className="object-cover w-full h-auto group-hover:scale-105 transition-transform duration-500"
+   541→                loading="lazy"
+   542→              />
+   543→            </motion.div>
+   544→          ))}
+   545→        </motion.div>
+   546→
+   547→        {/* Lightbox */}
+   548→        <AnimatePresence>
+   549→          {lightboxImage && (
+   550→            <motion.div
+   551→              initial={{ opacity: 0 }}
+   552→              animate={{ opacity: 1 }}
+   553→              exit={{ opacity: 0 }}
+   554→              transition={{ duration: 0.2 }}
+   555→              className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+   556→              onClick={() => setLightboxImage(null)}
+   557→            >
+   558→              <motion.div
+   559→                initial={{ scale: 0.9, opacity: 0 }}
+   560→                animate={{ scale: 1, opacity: 1 }}
+   561→                exit={{ scale: 0.9, opacity: 0 }}
+   562→                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+   563→                className="relative max-w-4xl w-full bg-white rounded-2xl overflow-hidden"
+   564→                onClick={(e) => e.stopPropagation()}
+   565→              >
+   566→                <button
+   567→                  type="button"
+   568→                  onClick={() => setLightboxImage(null)}
+   569→                  className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition"
+   570→                  aria-label="Close lightbox"
+   571→                >
+   572→                  <X className="w-5 h-5" />
+   573→                </button>
+   574→                <img
+   575→                  src={lightboxImage.imageUrl}
+   576→                  alt={lightboxImage.title}
+   577→                  className="w-full h-auto max-h-[80vh] object-contain bg-gray-50"
+   578→                />
+   579→                <div className="p-4">
+   580→                  <p className="text-sm font-semibold text-slate-900">{lightboxImage.title}</p>
+   581→                  <p className="text-xs text-gray-400 mt-1">{lightboxImage.category}</p>
+   582→                </div>
+   583→              </motion.div>
+   584→            </motion.div>
+   585→          )}
+   586→        </AnimatePresence>
+   587→      </div>
+   588→    </section>
+   589→  );
+   590→}
+   591→
+   592→/* ═══════════════════════════════════════════════════════════════════════
+   593→   SECTION 7 — TESTIMONIALS
+   594→   ═══════════════════════════════════════════════════════════════════════ */
+   595→
+   596→interface Testimonial {
+   597→  name: string;
+   598→  title: string;
+   599→  content: string;
+   600→  rating: number;
+   601→}
+   602→
+   603→const fallbackTestimonials: Testimonial[] = [
+   604→  {
+   605→    name: 'Rajesh Kumar',
+   606→    title: 'Ather Dealership Partner, Mumbai',
+   607→    content:
+   608→      'Investing in Ather Energy Dealership was the best decision I made. The support system is incredible — from initial setup to ongoing marketing, everything is handled professionally. My showroom turned profitable within 14 months.',
+   609→    rating: 5,
+   610→  },
+   611→  {
+   612→    name: 'Priya Sharma',
+   613→    title: 'Ather Multi-Location Owner, Bangalore',
+   614→    content:
+   615→      'What sets Ather Energy Dealership apart is the complete ecosystem support. The training programs prepared my staff exceptionally well, and the smart inventory system has virtually eliminated dead stock issues.',
+   616→    rating: 5,
+   617→  },
+   618→  {
+   619→    name: 'Amit Patel',
+   620→    title: 'Ather Dealership Partner, Ahmedabad',
+   621→    content:
+   622→      'The transparency in operations and financial reporting gives me complete confidence. Revenue streams from accessories and service alone cover my operating costs. Highly recommend Ather Energy Dealership to any aspiring entrepreneur.',
+   623→    rating: 5,
+   624→  },
+   625→];
+   626→
+   627→export function TestimonialsSection() {
+   628→  const containerRef = useRef<HTMLDivElement>(null);
+   629→  const isInView = useInView(containerRef, { once: true, margin: '-80px' });
+   630→  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+   631→  const [loading, setLoading] = useState(true);
+   632→  const [currentIndex, setCurrentIndex] = useState(0);
+   633→
+   634→  useEffect(() => {
+   635→    async function fetchTestimonials() {
+   636→      try {
+   637→        const res = await fetch('/api/testimonials');
+   638→        if (res.ok) {
+   639→          const data = await res.json();
+   640→          const cleaned = safeData(data) as Testimonial[];
+   641→          if (Array.isArray(cleaned) && cleaned.length > 0) {
+   642→            setTestimonials(cleaned);
+   643→            setLoading(false);
+   644→            return;
+   645→          }
+   646→        }
+   647→      } catch {
+   648→        // fetch failed — use fallback
+   649→      }
+   650→      setTestimonials(fallbackTestimonials);
+   651→      setLoading(false);
+   652→    }
+   653→    fetchTestimonials();
+   654→  }, []);
+   655→
+   656→  // Auto-advance slider every 5 seconds
+   657→  useEffect(() => {
+   658→    if (testimonials.length <= 1) return;
+   659→    const timer = setInterval(() => {
+   660→      setCurrentIndex((prev) => (prev + 1) % testimonials.length);
+   661→    }, 5000);
+   662→    return () => clearInterval(timer);
+   663→  }, [testimonials.length]);
+   664→
+   665→  const getInitials = (name: string) =>
+   666→    name
+   667→      .split(' ')
+   668→      .map((w) => w[0])
+   669→      .join('')
+   670→      .slice(0, 2);
+   671→
+   672→  if (loading) {
+   673→    return (
+   674→      <section className="bg-white py-20 md:py-28">
+   675→        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   676→          <div className="text-center mb-12">
+   677→            <div className="h-10 w-72 bg-gray-200 rounded-lg mx-auto animate-pulse" />
+   678→          </div>
+   679→          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+   680→            {[1, 2, 3].map((i) => (
+   681→              <div key={i} className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm animate-pulse">
+   682→                <div className="w-10 h-10 bg-emerald-100 rounded mb-4" />
+   683→                <div className="space-y-2">
+   684→                  <div className="h-3 w-full bg-gray-100 rounded" />
+   685→                  <div className="h-3 w-5/6 bg-gray-100 rounded" />
+   686→                  <div className="h-3 w-4/6 bg-gray-100 rounded" />
+   687→                </div>
+   688→                <div className="flex gap-1 mt-4">
+   689→                  {[1, 2, 3, 4, 5].map((s) => (
+   690→                    <div key={s} className="w-4 h-4 bg-gray-200 rounded" />
+   691→                  ))}
+   692→                </div>
+   693→                <div className="flex items-center gap-3 mt-6">
+   694→                  <div className="w-12 h-12 rounded-full bg-gray-200" />
+   695→                  <div className="space-y-1">
+   696→                    <div className="h-3 w-24 bg-gray-200 rounded" />
+   697→                    <div className="h-2 w-32 bg-gray-100 rounded" />
+   698→                  </div>
+   699→                </div>
+   700→              </div>
+   701→            ))}
+   702→          </div>
+   703→        </div>
+   704→      </section>
+   705→    );
+   706→  }
+   707→
+   708→  return (
+   709→    <section className="bg-white py-20 md:py-28">
+   710→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   711→        <motion.div
+   712→          initial={{ opacity: 0, y: 20 }}
+   713→          animate={isInView ? { opacity: 1, y: 0 } : {}}
+   714→          transition={{ duration: 0.6 }}
+   715→          className="text-center"
+   716→        >
+   717→          <h2 className="text-3xl md:text-4xl font-black text-slate-900">
+   718→            What Our Partners Say
+   719→          </h2>
+   720→        </motion.div>
+   721→
+   722→        {/* Desktop: 3 cards */}
+   723→        <motion.div
+   724→          ref={containerRef}
+   725→          variants={staggerContainer}
+   726→          initial="hidden"
+   727→          animate={isInView ? 'visible' : 'hidden'}
+   728→          className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-6 mt-14"
+   729→        >
+   730→          {testimonials.map((t, idx) => (
+   731→            <motion.div key={idx} variants={fadeUp} className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
+   732→              <Quote className="w-10 h-10 text-emerald-100 mb-4" />
+   733→              <p className="italic text-gray-600 text-sm leading-relaxed">{t.content}</p>
+   734→              <div className="flex gap-0.5 mt-4 mb-6">
+   735→                {Array.from({ length: 5 }).map((_, i) => (
+   736→                  <Star
+   737→                    key={i}
+   738→                    className={`w-4 h-4 ${i < t.rating ? 'star-filled' : 'star-empty'}`}
+   739→                    fill={i < t.rating ? '#F59E0B' : 'none'}
+   740→                  />
+   741→                ))}
+   742→              </div>
+   743→              <div className="flex items-center gap-3">
+   744→                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm shrink-0">
+   745→                  {getInitials(t.name)}
+   746→                </div>
+   747→                <div>
+   748→                  <p className="font-semibold text-slate-900 text-sm">{t.name}</p>
+   749→                  <p className="text-xs text-gray-400">{t.title}</p>
+   750→                </div>
+   751→              </div>
+   752→            </motion.div>
+   753→          ))}
+   754→        </motion.div>
+   755→
+   756→        {/* Mobile: Slider */}
+   757→        <div className="md:hidden mt-14">
+   758→          <div className="overflow-hidden">
+   759→            <AnimatePresence mode="wait">
+   760→              <motion.div
+   761→                key={currentIndex}
+   762→                initial={{ opacity: 0, x: 40 }}
+   763→                animate={{ opacity: 1, x: 0 }}
+   764→                exit={{ opacity: 0, x: -40 }}
+   765→                transition={{ duration: 0.3 }}
+   766→                className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm"
+   767→              >
+   768→                <Quote className="w-10 h-10 text-emerald-100 mb-4" />
+   769→                <p className="italic text-gray-600 text-sm leading-relaxed">
+   770→                  {testimonials[currentIndex]?.content}
+   771→                </p>
+   772→                <div className="flex gap-0.5 mt-4 mb-6">
+   773→                  {Array.from({ length: 5 }).map((_, i) => (
+   774→                    <Star
+   775→                      key={i}
+   776→                      className={`w-4 h-4 ${i < (testimonials[currentIndex]?.rating ?? 0) ? 'star-filled' : 'star-empty'}`}
+   777→                      fill={i < (testimonials[currentIndex]?.rating ?? 0) ? '#F59E0B' : 'none'}
+   778→                    />
+   779→                  ))}
+   780→                </div>
+   781→                <div className="flex items-center gap-3">
+   782→                  <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm shrink-0">
+   783→                    {getInitials(testimonials[currentIndex]?.name ?? '??')}
+   784→                  </div>
+   785→                  <div>
+   786→                    <p className="font-semibold text-slate-900 text-sm">{testimonials[currentIndex]?.name}</p>
+   787→                    <p className="text-xs text-gray-400">{testimonials[currentIndex]?.title}</p>
+   788→                  </div>
+   789→                </div>
+   790→              </motion.div>
+   791→            </AnimatePresence>
+   792→          </div>
+   793→
+   794→          {/* Dots */}
+   795→          <div className="flex justify-center gap-2 mt-6">
+   796→            {testimonials.map((_, i) => (
+   797→              <button
+   798→                key={i}
+   799→                type="button"
+   800→                onClick={() => setCurrentIndex(i)}
+   801→                className={`w-2.5 h-2.5 rounded-full transition ${
+   802→                  i === currentIndex ? 'bg-[#059669]' : 'bg-gray-300'
+   803→                }`}
+   804→                aria-label={`Go to testimonial ${i + 1}`}
+   805→              />
+   806→            ))}
+   807→          </div>
+   808→        </div>
+   809→      </div>
+   810→    </section>
+   811→  );
+   812→}
+   813→
+   814→/* ═══════════════════════════════════════════════════════════════════════
+   815→   SECTION 8 — FAQ
+   816→   ═══════════════════════════════════════════════════════════════════════ */
+   817→
+   818→interface FAQ {
+   819→  question: string;
+   820→  answer: string;
+   821→}
+   822→
+   823→const fallbackFAQs: FAQ[] = [
+   824→  {
+   825→    question: 'What is the minimum investment required to open an Ather Energy Dealership showroom?',
+   826→    answer:
+   827→      'The minimum investment ranges from ₹25 to ₹50 Lakhs depending on the city tier and showroom size. This includes showroom setup, initial inventory, security deposits, and 3 months of working capital. We offer flexible payment plans to help you get started.',
+   828→  },
+   829→  {
+   830→    question: 'How long does it take to set up and launch an Ather Energy showroom?',
+   831→    answer:
+   832→      'From agreement signing to grand opening typically takes 8-12 weeks. This includes location evaluation, branded interior design, equipment installation, staff recruitment, and training. Our dedicated setup team guides you through every step.',
+   833→  },
+   834→  {
+   835→    question: 'Do I need prior experience in the automobile industry?',
+   836→    answer:
+   837→      'While prior experience in automobiles or retail is beneficial, it is not mandatory. We provide comprehensive 4-week training programs covering all aspects of the business — from sales and service to operations and customer management. Many of our most successful partners came from non-automotive backgrounds.',
+   838→  },
+   839→  {
+   840→    question: 'What kind of ongoing support do Ather Energy dealership partners receive?',
+   841→    answer:
+   842→      'We provide end-to-end support including national and regional marketing campaigns, digital marketing assistance, staff training and development programs, smart inventory management systems, business analytics dashboards, and a dedicated relationship manager for your showroom.',
+   843→  },
+   844→];
+   845→
+   846→export function FAQSection() {
+   847→  const containerRef = useRef<HTMLDivElement>(null);
+   848→  const isInView = useInView(containerRef, { once: true, margin: '-80px' });
+   849→  const [faqs, setFaqs] = useState<FAQ[]>([]);
+   850→  const [openIndex, setOpenIndex] = useState<number | null>(null);
+   851→  const [loading, setLoading] = useState(true);
+   852→
+   853→  useEffect(() => {
+   854→    async function fetchFAQs() {
+   855→      try {
+   856→        const res = await fetch('/api/faqs');
+   857→        if (res.ok) {
+   858→          const data = await res.json();
+   859→          const cleaned = safeData(data) as FAQ[];
+   860→          if (Array.isArray(cleaned) && cleaned.length > 0) {
+   861→            setFaqs(cleaned);
+   862→            setLoading(false);
+   863→            return;
+   864→          }
+   865→        }
+   866→      } catch {
+   867→        // fetch failed — use fallback
+   868→      }
+   869→      setFaqs(fallbackFAQs);
+   870→      setLoading(false);
+   871→    }
+   872→    fetchFAQs();
+   873→  }, []);
+   874→
+   875→  const toggleFAQ = useCallback((index: number) => {
+   876→    setOpenIndex((prev) => (prev === index ? null : index));
+   877→  }, []);
+   878→
+   879→  return (
+   880→    <section className="bg-[#FAFAFA] py-20 md:py-28">
+   881→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+   882→        <motion.div
+   883→          initial={{ opacity: 0, y: 20 }}
+   884→          animate={isInView ? { opacity: 1, y: 0 } : {}}
+   885→          transition={{ duration: 0.6 }}
+   886→          className="text-center"
+   887→        >
+   888→          <h2 className="text-3xl md:text-4xl font-black text-slate-900">
+   889→            Frequently Asked Questions
+   890→          </h2>
+   891→        </motion.div>
+   892→
+   893→        {loading ? (
+   894→          <div className="max-w-3xl mx-auto space-y-3 mt-14">
+   895→            {[1, 2, 3, 4].map((i) => (
+   896→              <div key={i} className="bg-white rounded-2xl border border-gray-100 p-6 animate-pulse">
+   897→                <div className="h-4 w-3/4 rounded bg-gray-200 mb-2" />
+   898→                <div className="h-3 w-full rounded bg-gray-100" />
+   899→              </div>
+   900→            ))}
+   901→          </div>
+   902→        ) : (
+   903→          <motion.div
+   904→            ref={containerRef}
+   905→            variants={staggerContainer}
+   906→            initial="hidden"
+   907→            animate={isInView ? 'visible' : 'hidden'}
+   908→            className="max-w-3xl mx-auto mt-14 space-y-3"
+   909→          >
+   910→            {faqs.map((faq, idx) => {
+   911→              const isOpen = openIndex === idx;
+   912→              return (
+   913→                <motion.div key={idx} variants={fadeUp} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+   914→                  <button
+   915→                    type="button"
+   916→                    onClick={() => toggleFAQ(idx)}
+   917→                    className="w-full flex justify-between items-center p-6 text-left font-semibold text-slate-900 hover:text-[#059669] transition-colors"
+   918→                    aria-expanded={isOpen}
+   919→                  >
+   920→                    <span className="pr-4">{faq.question}</span>
+   921→                    <ChevronDown
+   922→                      className={`w-5 h-5 shrink-0 text-gray-400 transition-transform duration-300 ${
+   923→                        isOpen ? 'rotate-180' : ''
+   924→                      }`}
+   925→                    />
+   926→                  </button>
+   927→                  <motion.div
+   928→                    initial={false}
+   929→                    animate={{
+   930→                      height: isOpen ? 'auto' : 0,
+   931→                      opacity: isOpen ? 1 : 0,
+   932→                    }}
+   933→                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+   934→                    className="overflow-hidden"
+   935→                  >
+   936→                    <p className="text-gray-600 text-sm leading-relaxed px-6 pb-6">
+   937→                      {faq.answer}
+   938→                    </p>
+   939→                  </motion.div>
+   940→                </motion.div>
+   941→              );
+   942→            })}
+   943→          </motion.div>
+   944→        )}
+   945→      </div>
+   946→    </section>
+   947→  );
+   948→}
+   949→
+   950→/* ═══════════════════════════════════════════════════════════════════════
+   951→   SECTION 9 — CONTACT
+   952→   ═══════════════════════════════════════════════════════════════════════ */
+   953→
+   954→export function ContactSection() {
+   955→  const containerRef = useRef<HTMLDivElement>(null);
+   956→  const isInView = useInView(containerRef, { once: true, margin: '-80px' });
+   957→
+   958→  const [form, setForm] = useState({
+   959→    name: '',
+   960→    email: '',
+   961→    phone: '',
+   962→    subject: '',
+   963→    message: '',
+   964→  });
+   965→  const [errors, setErrors] = useState<Record<string, string>>({});
+   966→  const [submitting, setSubmitting] = useState(false);
+   967→  const [success, setSuccess] = useState(false);
+   968→
+   969→  const validate = () => {
+   970→    const errs: Record<string, string> = {};
+   971→    if (!form.name.trim()) errs.name = 'Name is required';
+   972→    if (!form.email.trim()) errs.email = 'Email is required';
+   973→    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Invalid email';
+   974→    if (!form.phone.trim()) errs.phone = 'Phone is required';
+   975→    if (!form.message.trim()) errs.message = 'Message is required';
+   976→    return errs;
+   977→  };
+   978→
+   979→  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+   980→    const { name, value } = e.target;
+   981→    setForm((prev) => ({ ...prev, [name]: value }));
+   982→    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+   983→  };
+   984→
+   985→  const handleSubmit = async (e: React.FormEvent) => {
+   986→    e.preventDefault();
+   987→    const errs = validate();
+   988→    if (Object.keys(errs).length > 0) {
+   989→      setErrors(errs);
+   990→      return;
+   991→    }
+   992→    setSubmitting(true);
+   993→    try {
+   994→      const res = await fetch('/api/contact', {
+   995→        method: 'POST',
+   996→        headers: { 'Content-Type': 'application/json' },
+   997→        body: JSON.stringify(form),
+   998→      });
+   999→      if (res.ok) {
+  1000→        setSuccess(true);
+  1001→        setForm({ name: '', email: '', phone: '', subject: '', message: '' });
+  1002→      }
+  1003→    } catch {
+  1004→      // silent fail
+  1005→    }
+  1006→    setSubmitting(false);
+  1007→  };
+  1008→
+  1009→  const contactInfo = [
+  1010→    { icon: <Phone className="w-5 h-5 text-emerald-600" />, label: 'Phone', value: '+91 8969060623', href: 'tel:+918969060623' },
+  1011→    { icon: <MessageCircle className="w-5 h-5 text-emerald-600" />, label: 'WhatsApp', value: '8969060623', href: 'https://wa.me/918969060623' },
+  1012→    { icon: <Mail className="w-5 h-5 text-emerald-600" />, label: 'Email', value: 'admin@atherdealership.in', href: 'mailto:admin@atherdealership.in' },
+  1013→    { icon: <MapPin className="w-5 h-5 text-emerald-600" />, label: 'Address', value: '123 Business Hub, MG Road, New Delhi - 110001' },
+  1014→    { icon: <Clock className="w-5 h-5 text-emerald-600" />, label: 'Business Hours', value: 'Mon - Sat: 9:00 AM - 7:00 PM' },
+  1015→  ];
+  1016→
+  1017→  return (
+  1018→    <section id="contact" className="bg-white py-20 md:py-28">
+  1019→      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  1020→        <motion.div
+  1021→          initial={{ opacity: 0, y: 20 }}
+  1022→          animate={isInView ? { opacity: 1, y: 0 } : {}}
+  1023→          transition={{ duration: 0.6 }}
+  1024→          className="text-center"
+  1025→        >
+  1026→          <h2 className="text-3xl md:text-4xl font-black text-slate-900 gradient-text">
+  1027→            Get In Touch
+  1028→          </h2>
+  1029→          <p className="text-gray-500 text-center mt-4">
+  1030→            Take the first step towards your Ather Energy Dealership
+  1031→          </p>
+  1032→        </motion.div>
+  1033→
+  1034→        <motion.div
+  1035→          ref={containerRef}
+  1036→          variants={staggerContainer}
+  1037→          initial="hidden"
+  1038→          animate={isInView ? 'visible' : 'hidden'}
+  1039→          className="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-6xl mx-auto mt-14"
+  1040→        >
+  1041→          {/* ── Left: Contact Info ── */}
+  1042→          <motion.div variants={fadeUp} className="space-y-5">
+  1043→            {contactInfo.map((item) => (
+  1044→              <div key={item.label} className="flex items-start gap-4">
+  1045→                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+  1046→                  {item.icon}
+  1047→                </div>
+  1048→                <div>
+  1049→                  <p className="text-sm font-semibold text-slate-900">{item.label}</p>
+  1050→                  {item.href ? (
+  1051→                    <a
+  1052→                      href={item.href}
+  1053→                      target={item.href.startsWith('http') ? '_blank' : undefined}
+  1054→                      rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+  1055→                      className="text-sm text-gray-500 hover:text-emerald-600 transition-colors"
+  1056→                    >
+  1057→                      {item.value}
+  1058→                    </a>
+  1059→                  ) : (
+  1060→                    <p className="text-sm text-gray-500">{item.value}</p>
+  1061→                  )}
+  1062→                </div>
+  1063→              </div>
+  1064→            ))}
+  1065→          </motion.div>
+  1066→
+  1067→          {/* ── Right: Contact Form ── */}
+  1068→          <motion.div variants={fadeUp}>
+  1069→            {success ? (
+  1070→              <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center">
+  1071→                <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto mb-4" />
+  1072→                <h3 className="text-xl font-bold text-slate-900 mb-2">Message Sent!</h3>
+  1073→                <p className="text-gray-500 text-sm">
+  1074→                  Thank you for reaching out. Our team will get back to you within 24 hours.
+  1075→                </p>
+  1076→                <button
+  1077→                  type="button"
+  1078→                  onClick={() => setSuccess(false)}
+  1079→                  className="btn-luxury-primary mt-6 inline-block text-sm"
+  1080→                >
+  1081→                  Send Another Message
+  1082→                </button>
+  1083→              </div>
+  1084→            ) : (
+  1085→              <form onSubmit={handleSubmit} className="form-luxury space-y-4">
+  1086→                <div>
+  1087→                  <label htmlFor="contact-name" className="block text-sm font-medium text-slate-700 mb-1.5">
+  1088→                    Name <span className="text-red-500">*</span>
+  1089→                  </label>
+  1090→                  <input
+  1091→                    id="contact-name"
+  1092→                    name="name"
+  1093→                    type="text"
+  1094→                    value={form.name}
+  1095→                    onChange={handleChange}
+  1096→                    placeholder="Your full name"
+  1097→                    className={`w-full bg-white border ${errors.name ? 'border-red-400' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#059669]/20 focus:border-[#059669] transition`}
+  1098→                  />
+  1099→                  {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+  1100→                </div>
+  1101→
+  1102→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  1103→                  <div>
+  1104→                    <label htmlFor="contact-email" className="block text-sm font-medium text-slate-700 mb-1.5">
+  1105→                      Email <span className="text-red-500">*</span>
+  1106→                    </label>
+  1107→                    <input
+  1108→                      id="contact-email"
+  1109→                      name="email"
+  1110→                      type="email"
+  1111→                      value={form.email}
+  1112→                      onChange={handleChange}
+  1113→                      placeholder="you@example.com"
+  1114→                      className={`w-full bg-white border ${errors.email ? 'border-red-400' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#059669]/20 focus:border-[#059669] transition`}
+  1115→                    />
+  1116→                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+  1117→                  </div>
+  1118→                  <div>
+  1119→                    <label htmlFor="contact-phone" className="block text-sm font-medium text-slate-700 mb-1.5">
+  1120→                      Phone <span className="text-red-500">*</span>
+  1121→                    </label>
+  1122→                    <input
+  1123→                      id="contact-phone"
+  1124→                      name="phone"
+  1125→                      type="tel"
+  1126→                      value={form.phone}
+  1127→                      onChange={handleChange}
+  1128→                      placeholder="+91 XXXXX XXXXX"
+  1129→                      className={`w-full bg-white border ${errors.phone ? 'border-red-400' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#059669]/20 focus:border-[#059669] transition`}
+  1130→                    />
+  1131→                    {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+  1132→                  </div>
+  1133→                </div>
+  1134→
+  1135→                <div>
+  1136→                  <label htmlFor="contact-subject" className="block text-sm font-medium text-slate-700 mb-1.5">
+  1137→                    Subject
+  1138→                  </label>
+  1139→                  <input
+  1140→                    id="contact-subject"
+  1141→                    name="subject"
+  1142→                    type="text"
+  1143→                    value={form.subject}
+  1144→                    onChange={handleChange}
+  1145→                    placeholder="Ather Energy Dealership inquiry"
+  1146→                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#059669]/20 focus:border-[#059669] transition"
+  1147→                  />
+  1148→                </div>
+  1149→
+  1150→                <div>
+  1151→                  <label htmlFor="contact-message" className="block text-sm font-medium text-slate-700 mb-1.5">
+  1152→                    Message <span className="text-red-500">*</span>
+  1153→                  </label>
+  1154→                  <textarea
+  1155→                    id="contact-message"
+  1156→                    name="message"
+  1157→                    rows={4}
+  1158→                    value={form.message}
+  1159→                    onChange={handleChange}
+  1160→                    placeholder="Tell us about your interest..."
+  1161→                    className={`w-full bg-white border ${errors.message ? 'border-red-400' : 'border-gray-200'} rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#059669]/20 focus:border-[#059669] transition resize-none`}
+  1162→                  />
+  1163→                  {errors.message && <p className="text-red-500 text-xs mt-1">{errors.message}</p>}
+  1164→                </div>
+  1165→
+  1166→                <button
+  1167→                  type="submit"
+  1168→                  disabled={submitting}
+  1169→                  className="btn-luxury-primary w-full flex items-center justify-center gap-2 text-sm"
+  1170→                >
+  1171→                  {submitting ? (
+  1172→                    <>
+  1173→                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+  1174→                      Sending...
+  1175→                    </>
+  1176→                  ) : (
+  1177→                    <>
+  1178→                      Send Message <ArrowRight className="w-4 h-4" />
+  1179→                    </>
+  1180→                  )}
+  1181→                </button>
+  1182→              </form>
+  1183→            )}
+  1184→          </motion.div>
+  1185→        </motion.div>
+  1186→      </div>
+  1187→    </section>
+  1188→  );
+  1189→}

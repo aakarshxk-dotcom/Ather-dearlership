@@ -1,0 +1,645 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback } from 'react';
+     4→import { motion } from 'framer-motion';
+     5→import { Button } from '@/components/ui/button';
+     6→import { Input } from '@/components/ui/input';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Card, CardContent } from '@/components/ui/card';
+     9→import {
+    10→  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+    11→} from '@/components/ui/table';
+    12→import {
+    13→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    14→} from '@/components/ui/dialog';
+    15→import {
+    16→  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+    17→} from '@/components/ui/alert-dialog';
+    18→import {
+    19→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    20→} from '@/components/ui/select';
+    21→import { Textarea } from '@/components/ui/textarea';
+    22→import { Label } from '@/components/ui/label';
+    23→import { Skeleton } from '@/components/ui/skeleton';
+    24→import {
+    25→  Search, Download, FileSpreadsheet, Eye, Pencil, Trash2,
+    26→  ChevronLeft, ChevronRight, Loader2, X,
+    27→} from 'lucide-react';
+    28→import { toast } from 'sonner';
+    29→
+    30→/* ─── Types ─── */
+    31→interface Lead {
+    32→  id: string;
+    33→  fullName: string;
+    34→  phone: string;
+    35→  whatsapp: string;
+    36→  email: string;
+    37→  address: string;
+    38→  city: string;
+    39→  state: string;
+    40→  pinCode: string;
+    41→  dateOfBirth?: string;
+    42→  education?: string;
+    43→  occupation?: string;
+    44→  businessExperience?: string;
+    45→  existingBusiness?: string;
+    46→  investmentCapacity?: string;
+    47→  landSize?: string;
+    48→  propertyDetails?: string;
+    49→  preferredLocation?: string;
+    50→  expectedTimeline?: string;
+    51→  additionalComments?: string;
+    52→  uploadedDocuments?: string;
+    53→  status: string;
+    54→  priority: string;
+    55→  source?: string;
+    56→  adminNotes?: string;
+    57→  assignedTo?: string;
+    58→  lastContactedAt?: string;
+    59→  createdAt: string;
+    60→  updatedAt: string;
+    61→}
+    62→
+    63→type StatusFilter = 'all' | 'New' | 'Contacted' | 'Approved' | 'Rejected';
+    64→
+    65→const STATUS_COLORS: Record<string, string> = {
+    66→  New: 'bg-blue-100 text-blue-700',
+    67→  Contacted: 'bg-amber-100 text-amber-700',
+    68→  Approved: 'bg-emerald-100 text-emerald-700',
+    69→  Rejected: 'bg-red-100 text-red-700',
+    70→};
+    71→
+    72→const PRIORITY_COLORS: Record<string, string> = {
+    73→  low: 'bg-gray-100 text-gray-600',
+    74→  medium: 'bg-blue-100 text-blue-700',
+    75→  high: 'bg-amber-100 text-amber-700',
+    76→  hot: 'bg-red-100 text-red-700',
+    77→};
+    78→
+    79→/* ─── Component ─── */
+    80→export function AdminLeads() {
+    81→  const [leads, setLeads] = useState<Lead[]>([]);
+    82→  const [total, setTotal] = useState(0);
+    83→  const [loading, setLoading] = useState(true);
+    84→  const [search, setSearch] = useState('');
+    85→  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+    86→  const [page, setPage] = useState(1);
+    87→  const [limit, setLimit] = useState(50);
+    88→
+    89→  // View dialog
+    90→  const [viewLead, setViewLead] = useState<Lead | null>(null);
+    91→  // Edit dialog
+    92→  const [editLead, setEditLead] = useState<Lead | null>(null);
+    93→  const [editForm, setEditForm] = useState<Record<string, string>>({});
+    94→  const [saving, setSaving] = useState(false);
+    95→  // Delete dialog
+    96→  const [deleteId, setDeleteId] = useState<string | null>(null);
+    97→  const [deleting, setDeleting] = useState(false);
+    98→  // Notes
+    99→  const [notes, setNotes] = useState('');
+   100→  const [savingNotes, setSavingNotes] = useState(false);
+   101→  // Exporting
+   102→  const [exporting, setExporting] = useState(false);
+   103→
+   104→  const fetchLeads = useCallback(async () => {
+   105→    setLoading(true);
+   106→    try {
+   107→      const params = new URLSearchParams({
+   108→        status: statusFilter,
+   109→        search,
+   110→        page: String(page),
+   111→        limit: String(limit),
+   112→      });
+   113→      const res = await fetch(`/api/leads?${params}`);
+   114→      if (res.ok) {
+   115→        const data = await res.json();
+   116→        setLeads(data.leads || []);
+   117→        setTotal(data.total || 0);
+   118→      }
+   119→    } catch {
+   120→      toast.error('Failed to fetch leads');
+   121→    } finally {
+   122→      setLoading(false);
+   123→    }
+   124→  }, [statusFilter, search, page, limit]);
+   125→
+   126→  useEffect(() => {
+   127→    fetchLeads();
+   128→  }, [fetchLeads]);
+   129→
+   130→  const totalPages = Math.ceil(total / limit);
+   131→
+   132→  const handleSearch = (e: React.FormEvent) => {
+   133→    e.preventDefault();
+   134→    setPage(1);
+   135→    fetchLeads();
+   136→  };
+   137→
+   138→  const openEdit = (lead: Lead) => {
+   139→    setEditLead(lead);
+   140→    setEditForm({
+   141→      fullName: lead.fullName,
+   142→      phone: lead.phone,
+   143→      whatsapp: lead.whatsapp,
+   144→      email: lead.email,
+   145→      city: lead.city,
+   146→      state: lead.state,
+   147→      status: lead.status,
+   148→      priority: lead.priority,
+   149→      adminNotes: lead.adminNotes || '',
+   150→    });
+   151→  };
+   152→
+   153→  const saveEdit = async () => {
+   154→    if (!editLead) return;
+   155→    setSaving(true);
+   156→    try {
+   157→      const res = await fetch('/api/leads', {
+   158→        method: 'PATCH',
+   159→        headers: { 'Content-Type': 'application/json' },
+   160→        body: JSON.stringify({ id: editLead.id, ...editForm }),
+   161→      });
+   162→      if (res.ok) {
+   163→        toast.success('Lead updated');
+   164→        setEditLead(null);
+   165→        fetchLeads();
+   166→      } else {
+   167→        const d = await res.json();
+   168→        toast.error(d.error || 'Failed to update');
+   169→      }
+   170→    } catch {
+   171→      toast.error('Network error');
+   172→    } finally {
+   173→      setSaving(false);
+   174→    }
+   175→  };
+   176→
+   177→  const handleDelete = async () => {
+   178→    if (!deleteId) return;
+   179→    setDeleting(true);
+   180→    try {
+   181→      const res = await fetch(`/api/leads?id=${deleteId}`, { method: 'DELETE' });
+   182→      if (res.ok) {
+   183→        toast.success('Lead deleted');
+   184→        setDeleteId(null);
+   185→        fetchLeads();
+   186→      } else {
+   187→        toast.error('Failed to delete');
+   188→      }
+   189→    } catch {
+   190→      toast.error('Network error');
+   191→    } finally {
+   192→      setDeleting(false);
+   193→    }
+   194→  };
+   195→
+   196→  const handleStatusChange = async (leadId: string, status: string) => {
+   197→    try {
+   198→      const res = await fetch('/api/leads', {
+   199→        method: 'PATCH',
+   200→        headers: { 'Content-Type': 'application/json' },
+   201→        body: JSON.stringify({ id: leadId, status }),
+   202→      });
+   203→      if (res.ok) {
+   204→        toast.success('Status updated');
+   205→        fetchLeads();
+   206→        if (viewLead?.id === leadId) {
+   207→          setViewLead({ ...viewLead, status });
+   208→        }
+   209→      }
+   210→    } catch {
+   211→      toast.error('Failed to update status');
+   212→    }
+   213→  };
+   214→
+   215→  const saveNotes = async () => {
+   216→    if (!viewLead) return;
+   217→    setSavingNotes(true);
+   218→    try {
+   219→      const res = await fetch('/api/leads', {
+   220→        method: 'PATCH',
+   221→        headers: { 'Content-Type': 'application/json' },
+   222→        body: JSON.stringify({ id: viewLead.id, adminNotes: notes }),
+   223→      });
+   224→      if (res.ok) {
+   225→        toast.success('Notes saved');
+   226→        setViewLead({ ...viewLead, adminNotes: notes });
+   227→      }
+   228→    } catch {
+   229→      toast.error('Failed to save notes');
+   230→    } finally {
+   231→      setSavingNotes(false);
+   232→    }
+   233→  };
+   234→
+   235→  const handleExport = async (format: 'csv' | 'excel') => {
+   236→    setExporting(true);
+   237→    try {
+   238→      const params = new URLSearchParams({ format, status: statusFilter });
+   239→      const res = await fetch(`/api/leads/export?${params}`);
+   240→      if (!res.ok) {
+   241→        toast.error('Export failed');
+   242→        return;
+   243→      }
+   244→      const blob = await res.blob();
+   245→      const url = URL.createObjectURL(blob);
+   246→      const a = document.createElement('a');
+   247→      a.href = url;
+   248→      a.download = `leads-export-${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'csv'}`;
+   249→      document.body.appendChild(a);
+   250→      a.click();
+   251→      document.body.removeChild(a);
+   252→      URL.revokeObjectURL(url);
+   253→      toast.success(`Exported as ${format.toUpperCase()}`);
+   254→    } catch {
+   255→      toast.error('Export failed');
+   256→    } finally {
+   257→      setExporting(false);
+   258→    }
+   259→  };
+   260→
+   261→  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+   262→
+   263→  return (
+   264→    <div className="space-y-4">
+   265→      {/* Header */}
+   266→      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+   267→        <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+   268→          <div className="relative flex-1 max-w-sm">
+   269→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+   270→            <Input
+   271→              placeholder="Search name, email, phone, city..."
+   272→              value={search}
+   273→              onChange={(e) => setSearch(e.target.value)}
+   274→              className="pl-9 h-10 bg-white"
+   275→            />
+   276→          </div>
+   277→          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as StatusFilter); setPage(1); }}>
+   278→            <SelectTrigger className="w-[150px] h-10 bg-white">
+   279→              <SelectValue />
+   280→            </SelectTrigger>
+   281→            <SelectContent>
+   282→              <SelectItem value="all">All Status</SelectItem>
+   283→              <SelectItem value="New">New</SelectItem>
+   284→              <SelectItem value="Contacted">Contacted</SelectItem>
+   285→              <SelectItem value="Approved">Approved</SelectItem>
+   286→              <SelectItem value="Rejected">Rejected</SelectItem>
+   287→            </SelectContent>
+   288→          </Select>
+   289→        </form>
+   290→        <div className="flex gap-2">
+   291→          <Button variant="outline" size="sm" className="h-10" onClick={() => handleExport('csv')} disabled={exporting}>
+   292→            <Download className="h-4 w-4 mr-1.5" />
+   293→            CSV
+   294→          </Button>
+   295→          <Button variant="outline" size="sm" className="h-10" onClick={() => handleExport('excel')} disabled={exporting}>
+   296→            <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+   297→            Excel
+   298→          </Button>
+   299→        </div>
+   300→      </div>
+   301→
+   302→      {/* Table */}
+   303→      <Card className="border-0 shadow-sm">
+   304→        <CardContent className="p-0">
+   305→          <div className="overflow-x-auto">
+   306→            <Table>
+   307→              <TableHeader>
+   308→                <TableRow className="border-t border-gray-100">
+   309→                  <TableHead className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</TableHead>
+   310→                  <TableHead className="text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Phone</TableHead>
+   311→                  <TableHead className="text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Email</TableHead>
+   312→                  <TableHead className="text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">City</TableHead>
+   313→                  <TableHead className="text-xs font-semibold text-gray-500 uppercase tracking-wider hidden xl:table-cell">State</TableHead>
+   314→                  <TableHead className="text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Investment</TableHead>
+   315→                  <TableHead className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</TableHead>
+   316→                  <TableHead className="text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Priority</TableHead>
+   317→                  <TableHead className="text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Date</TableHead>
+   318→                  <TableHead className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</TableHead>
+   319→                </TableRow>
+   320→              </TableHeader>
+   321→              <TableBody>
+   322→                {loading ? (
+   323→                  Array.from({ length: 5 }).map((_, i) => (
+   324→                    <TableRow key={i}>
+   325→                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+   326→                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+   327→                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-36" /></TableCell>
+   328→                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+   329→                      <TableCell className="hidden xl:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
+   330→                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+   331→                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+   332→                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-14" /></TableCell>
+   333→                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+   334→                      <TableCell><Skeleton className="h-8 w-20" /></TableCell>
+   335→                    </TableRow>
+   336→                  ))
+   337→                ) : leads.length === 0 ? (
+   338→                  <TableRow>
+   339→                    <TableCell colSpan={10} className="text-center py-12 text-sm text-gray-400">
+   340→                      No leads found
+   341→                    </TableCell>
+   342→                  </TableRow>
+   343→                ) : (
+   344→                  leads.map((lead) => (
+   345→                    <TableRow key={lead.id} className="border-gray-50">
+   346→                      <TableCell className="font-medium text-[#111827]">{lead.fullName}</TableCell>
+   347→                      <TableCell className="text-gray-500 text-sm hidden md:table-cell">{lead.phone}</TableCell>
+   348→                      <TableCell className="text-gray-500 text-sm hidden lg:table-cell">{lead.email}</TableCell>
+   349→                      <TableCell className="text-gray-500 text-sm hidden sm:table-cell">{lead.city}</TableCell>
+   350→                      <TableCell className="text-gray-500 text-sm hidden xl:table-cell">{lead.state}</TableCell>
+   351→                      <TableCell className="text-gray-500 text-sm hidden lg:table-cell">{lead.investmentCapacity || '—'}</TableCell>
+   352→                      <TableCell>
+   353→                        <Badge variant="secondary" className={STATUS_COLORS[lead.status] || ''}>
+   354→                          {lead.status}
+   355→                        </Badge>
+   356→                      </TableCell>
+   357→                      <TableCell className="hidden md:table-cell">
+   358→                        <Badge variant="secondary" className={PRIORITY_COLORS[lead.priority] || ''}>
+   359→                          {lead.priority}
+   360→                        </Badge>
+   361→                      </TableCell>
+   362→                      <TableCell className="text-gray-400 text-sm hidden sm:table-cell">{formatDate(lead.createdAt)}</TableCell>
+   363→                      <TableCell>
+   364→                        <div className="flex items-center justify-end gap-1">
+   365→                          <button onClick={() => { setViewLead(lead); setNotes(lead.adminNotes || ''); }} className="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+   366→                            <Eye className="h-4 w-4" />
+   367→                          </button>
+   368→                          <button onClick={() => openEdit(lead)} className="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors">
+   369→                            <Pencil className="h-4 w-4" />
+   370→                          </button>
+   371→                          <button onClick={() => setDeleteId(lead.id)} className="h-8 w-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+   372→                            <Trash2 className="h-4 w-4" />
+   373→                          </button>
+   374→                        </div>
+   375→                      </TableCell>
+   376→                    </TableRow>
+   377→                  ))
+   378→                )}
+   379→              </TableBody>
+   380→            </Table>
+   381→          </div>
+   382→
+   383→          {/* Pagination */}
+   384→          {!loading && total > 0 && (
+   385→            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+   386→              <p className="text-sm text-gray-500">
+   387→                Showing {((page - 1) * limit) + 1}–{Math.min(page * limit, total)} of {total}
+   388→              </p>
+   389→              <div className="flex items-center gap-2">
+   390→                <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setPage(1); }}>
+   391→                  <SelectTrigger className="h-8 w-[70px] text-xs">
+   392→                    <SelectValue />
+   393→                  </SelectTrigger>
+   394→                  <SelectContent>
+   395→                    <SelectItem value="25">25</SelectItem>
+   396→                    <SelectItem value="50">50</SelectItem>
+   397→                    <SelectItem value="100">100</SelectItem>
+   398→                  </SelectContent>
+   399→                </Select>
+   400→                <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+   401→                  <ChevronLeft className="h-4 w-4" />
+   402→                </Button>
+   403→                <span className="text-sm text-gray-600 min-w-[60px] text-center">
+   404→                  Page {page} of {totalPages || 1}
+   405→                </span>
+   406→                <Button variant="outline" size="icon" className="h-8 w-8" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+   407→                  <ChevronRight className="h-4 w-4" />
+   408→                </Button>
+   409→              </div>
+   410→            </div>
+   411→          )}
+   412→        </CardContent>
+   413→      </Card>
+   414→
+   415→      {/* ═══ VIEW LEAD DIALOG ═══ */}
+   416→      <Dialog open={!!viewLead} onOpenChange={() => setViewLead(null)}>
+   417→        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar">
+   418→          <DialogHeader>
+   419→            <DialogTitle className="text-lg font-semibold">Lead Details</DialogTitle>
+   420→          </DialogHeader>
+   421→          {viewLead && (
+   422→            <div className="space-y-5">
+   423→              {/* Status & Priority */}
+   424→              <div className="flex flex-wrap gap-3">
+   425→                <div>
+   426→                  <Label className="text-xs text-gray-500 mb-1 block">Status</Label>
+   427→                  <Select value={viewLead.status} onValueChange={(v) => handleStatusChange(viewLead.id, v)}>
+   428→                    <SelectTrigger className="w-[140px] h-9">
+   429→                      <SelectValue />
+   430→                    </SelectTrigger>
+   431→                    <SelectContent>
+   432→                      <SelectItem value="New">New</SelectItem>
+   433→                      <SelectItem value="Contacted">Contacted</SelectItem>
+   434→                      <SelectItem value="Approved">Approved</SelectItem>
+   435→                      <SelectItem value="Rejected">Rejected</SelectItem>
+   436→                    </SelectContent>
+   437→                  </Select>
+   438→                </div>
+   439→                <div>
+   440→                  <Label className="text-xs text-gray-500 mb-1 block">Priority</Label>
+   441→                  <Badge variant="secondary" className={PRIORITY_COLORS[viewLead.priority] || ''}>
+   442→                    {viewLead.priority}
+   443→                  </Badge>
+   444→                </div>
+   445→              </div>
+   446→
+   447→              {/* Personal Info */}
+   448→              <div>
+   449→                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Personal Information</h3>
+   450→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   451→                  {[
+   452→                    ['Full Name', viewLead.fullName],
+   453→                    ['Phone', viewLead.phone],
+   454→                    ['WhatsApp', viewLead.whatsapp],
+   455→                    ['Email', viewLead.email],
+   456→                    ['Date of Birth', viewLead.dateOfBirth ? formatDate(viewLead.dateOfBirth) : '—'],
+   457→                    ['Education', viewLead.education || '—'],
+   458→                    ['Occupation', viewLead.occupation || '—'],
+   459→                    ['Business Experience', viewLead.businessExperience || '—'],
+   460→                  ].map(([label, val]) => (
+   461→                    <div key={label} className="bg-gray-50/70 rounded-lg px-3 py-2">
+   462→                      <p className="text-[11px] text-gray-400 font-medium">{label}</p>
+   463→                      <p className="text-sm text-[#111827] font-medium">{val}</p>
+   464→                    </div>
+   465→                  ))}
+   466→                </div>
+   467→              </div>
+   468→
+   469→              {/* Location */}
+   470→              <div>
+   471→                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Location</h3>
+   472→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   473→                  {[
+   474→                    ['Address', viewLead.address],
+   475→                    ['City', viewLead.city],
+   476→                    ['State', viewLead.state],
+   477→                    ['PIN Code', viewLead.pinCode],
+   478→                    ['Preferred Location', viewLead.preferredLocation || '—'],
+   479→                  ].map(([label, val]) => (
+   480→                    <div key={label} className="bg-gray-50/70 rounded-lg px-3 py-2">
+   481→                      <p className="text-[11px] text-gray-400 font-medium">{label}</p>
+   482→                      <p className="text-sm text-[#111827] font-medium">{val}</p>
+   483→                    </div>
+   484→                  ))}
+   485→                </div>
+   486→              </div>
+   487→
+   488→              {/* Investment */}
+   489→              <div>
+   490→                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Investment Details</h3>
+   491→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   492→                  {[
+   493→                    ['Investment Capacity', viewLead.investmentCapacity || '—'],
+   494→                    ['Land Size', viewLead.landSize || '—'],
+   495→                    ['Property Details', viewLead.propertyDetails || '—'],
+   496→                    ['Expected Timeline', viewLead.expectedTimeline || '—'],
+   497→                    ['Existing Business', viewLead.existingBusiness || '—'],
+   498→                    ['Source', viewLead.source || '—'],
+   499→                  ].map(([label, val]) => (
+   500→                    <div key={label} className="bg-gray-50/70 rounded-lg px-3 py-2">
+   501→                      <p className="text-[11px] text-gray-400 font-medium">{label}</p>
+   502→                      <p className="text-sm text-[#111827] font-medium">{val}</p>
+   503→                    </div>
+   504→                  ))}
+   505→                </div>
+   506→              </div>
+   507→
+   508→              {/* Comments */}
+   509→              {viewLead.additionalComments && (
+   510→                <div>
+   511→                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Applicant Comments</h3>
+   512→                  <p className="text-sm text-gray-600 bg-gray-50/70 rounded-lg p-3">{viewLead.additionalComments}</p>
+   513→                </div>
+   514→              )}
+   515→
+   516→              {/* Admin Notes */}
+   517→              <div>
+   518→                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Admin Notes</h3>
+   519→                <Textarea
+   520→                  value={notes}
+   521→                  onChange={(e) => setNotes(e.target.value)}
+   522→                  placeholder="Add notes about this lead..."
+   523→                  className="min-h-[80px] bg-gray-50/50"
+   524→                />
+   525→                <Button size="sm" className="mt-2 h-8 bg-[#059669] hover:bg-[#047857]" onClick={saveNotes} disabled={savingNotes}>
+   526→                  {savingNotes ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+   527→                  Save Notes
+   528→                </Button>
+   529→              </div>
+   530→
+   531→              {/* Timestamps */}
+   532→              <div className="flex flex-wrap gap-4 text-xs text-gray-400">
+   533→                <span>Created: {formatDate(viewLead.createdAt)}</span>
+   534→                <span>Last Contacted: {viewLead.lastContactedAt ? formatDate(viewLead.lastContactedAt) : 'Never'}</span>
+   535→              </div>
+   536→            </div>
+   537→          )}
+   538→        </DialogContent>
+   539→      </Dialog>
+   540→
+   541→      {/* ═══ EDIT LEAD DIALOG ═══ */}
+   542→      <Dialog open={!!editLead} onOpenChange={() => setEditLead(null)}>
+   543→        <DialogContent className="max-w-lg">
+   544→          <DialogHeader>
+   545→            <DialogTitle>Edit Lead</DialogTitle>
+   546→          </DialogHeader>
+   547→          {editLead && (
+   548→            <div className="space-y-3">
+   549→              <div className="grid grid-cols-2 gap-3">
+   550→                <div>
+   551→                  <Label className="text-xs">Full Name</Label>
+   552→                  <Input value={editForm.fullName || ''} onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} className="mt-1 h-9" />
+   553→                </div>
+   554→                <div>
+   555→                  <Label className="text-xs">Phone</Label>
+   556→                  <Input value={editForm.phone || ''} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="mt-1 h-9" />
+   557→                </div>
+   558→              </div>
+   559→              <div className="grid grid-cols-2 gap-3">
+   560→                <div>
+   561→                  <Label className="text-xs">WhatsApp</Label>
+   562→                  <Input value={editForm.whatsapp || ''} onChange={(e) => setEditForm({ ...editForm, whatsapp: e.target.value })} className="mt-1 h-9" />
+   563→                </div>
+   564→                <div>
+   565→                  <Label className="text-xs">Email</Label>
+   566→                  <Input value={editForm.email || ''} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="mt-1 h-9" />
+   567→                </div>
+   568→              </div>
+   569→              <div className="grid grid-cols-2 gap-3">
+   570→                <div>
+   571→                  <Label className="text-xs">City</Label>
+   572→                  <Input value={editForm.city || ''} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} className="mt-1 h-9" />
+   573→                </div>
+   574→                <div>
+   575→                  <Label className="text-xs">State</Label>
+   576→                  <Input value={editForm.state || ''} onChange={(e) => setEditForm({ ...editForm, state: e.target.value })} className="mt-1 h-9" />
+   577→                </div>
+   578→              </div>
+   579→              <div className="grid grid-cols-2 gap-3">
+   580→                <div>
+   581→                  <Label className="text-xs">Status</Label>
+   582→                  <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
+   583→                    <SelectTrigger className="mt-1 h-9">
+   584→                      <SelectValue />
+   585→                    </SelectTrigger>
+   586→                    <SelectContent>
+   587→                      <SelectItem value="New">New</SelectItem>
+   588→                      <SelectItem value="Contacted">Contacted</SelectItem>
+   589→                      <SelectItem value="Approved">Approved</SelectItem>
+   590→                      <SelectItem value="Rejected">Rejected</SelectItem>
+   591→                    </SelectContent>
+   592→                  </Select>
+   593→                </div>
+   594→                <div>
+   595→                  <Label className="text-xs">Priority</Label>
+   596→                  <Select value={editForm.priority} onValueChange={(v) => setEditForm({ ...editForm, priority: v })}>
+   597→                    <SelectTrigger className="mt-1 h-9">
+   598→                      <SelectValue />
+   599→                    </SelectTrigger>
+   600→                    <SelectContent>
+   601→                      <SelectItem value="low">Low</SelectItem>
+   602→                      <SelectItem value="medium">Medium</SelectItem>
+   603→                      <SelectItem value="high">High</SelectItem>
+   604→                      <SelectItem value="hot">Hot</SelectItem>
+   605→                    </SelectContent>
+   606→                  </Select>
+   607→                </div>
+   608→              </div>
+   609→              <div>
+   610→                <Label className="text-xs">Admin Notes</Label>
+   611→                <Textarea value={editForm.adminNotes || ''} onChange={(e) => setEditForm({ ...editForm, adminNotes: e.target.value })} className="mt-1 min-h-[60px]" />
+   612→              </div>
+   613→              <DialogFooter>
+   614→                <Button variant="outline" onClick={() => setEditLead(null)}>Cancel</Button>
+   615→                <Button className="bg-[#059669] hover:bg-[#047857]" onClick={saveEdit} disabled={saving}>
+   616→                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+   617→                  Save Changes
+   618→                </Button>
+   619→              </DialogFooter>
+   620→            </div>
+   621→          )}
+   622→        </DialogContent>
+   623→      </Dialog>
+   624→
+   625→      {/* ═══ DELETE CONFIRMATION ═══ */}
+   626→      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+   627→        <AlertDialogContent>
+   628→          <AlertDialogHeader>
+   629→            <AlertDialogTitle>Delete Lead</AlertDialogTitle>
+   630→            <AlertDialogDescription>
+   631→              This action cannot be undone. This lead and all associated data will be permanently removed.
+   632→            </AlertDialogDescription>
+   633→          </AlertDialogHeader>
+   634→          <AlertDialogFooter>
+   635→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+   636→            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-red-600 hover:bg-red-700">
+   637→              {deleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+   638→              Delete
+   639→            </AlertDialogAction>
+   640→          </AlertDialogFooter>
+   641→        </AlertDialogContent>
+   642→      </AlertDialog>
+   643→    </div>
+   644→  );
+   645→}

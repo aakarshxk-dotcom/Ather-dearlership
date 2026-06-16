@@ -1,0 +1,1018 @@
+     1→'use client';
+     2→
+     3→import { useState, useCallback } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  Upload,
+     7→  FileText,
+     8→  User,
+     9→  Phone,
+    10→  Mail,
+    11→  MapPin,
+    12→  Calendar,
+    13→  CheckCircle2,
+    14→  Loader2,
+    15→  ChevronLeft,
+    16→} from 'lucide-react';
+    17→import { useAppStore } from '@/store/app';
+    18→
+    19→interface FormData {
+    20→  fullName: string;
+    21→  phone: string;
+    22→  whatsapp: string;
+    23→  email: string;
+    24→  address: string;
+    25→  city: string;
+    26→  state: string;
+    27→  pinCode: string;
+    28→  dateOfBirth: string;
+    29→  education: string;
+    30→  occupation: string;
+    31→  businessExperience: string;
+    32→  existingBusiness: string;
+    33→  investmentCapacity: string;
+    34→  landSize: string;
+    35→  preferredLocation: string;
+    36→  expectedTimeline: string;
+    37→  additionalComments: string;
+    38→  identityProof: File | null;
+    39→  propertyDocs: File | null;
+    40→  resume: File | null;
+    41→  termsAccepted: boolean;
+    42→}
+    43→
+    44→interface FormErrors {
+    45→  fullName?: string;
+    46→  phone?: string;
+    47→  whatsapp?: string;
+    48→  email?: string;
+    49→  address?: string;
+    50→  city?: string;
+    51→  state?: string;
+    52→  pinCode?: string;
+    53→  investmentCapacity?: string;
+    54→  identityProof?: string;
+    55→  propertyDocs?: string;
+    56→  resume?: string;
+    57→  termsAccepted?: string;
+    58→}
+    59→
+    60→const initialFormData: FormData = {
+    61→  fullName: '',
+    62→  phone: '',
+    63→  whatsapp: '',
+    64→  email: '',
+    65→  address: '',
+    66→  city: '',
+    67→  state: '',
+    68→  pinCode: '',
+    69→  dateOfBirth: '',
+    70→  education: '',
+    71→  occupation: '',
+    72→  businessExperience: '',
+    73→  existingBusiness: '',
+    74→  investmentCapacity: '',
+    75→  landSize: '',
+    76→  preferredLocation: '',
+    77→  expectedTimeline: '',
+    78→  additionalComments: '',
+    79→  identityProof: null,
+    80→  propertyDocs: null,
+    81→  resume: null,
+    82→  termsAccepted: false,
+    83→};
+    84→
+    85→const steps = [
+    86→  { label: 'Personal Information', icon: User },
+    87→  { label: 'Business Details', icon: MapPin },
+    88→  { label: 'Documents & Submit', icon: FileText },
+    89→];
+    90→
+    91→const educationOptions = [
+    92→  { value: '', label: 'Select Education' },
+    93→  { value: 'high_school', label: 'High School' },
+    94→  { value: 'diploma', label: 'Diploma' },
+    95→  { value: 'bachelor', label: "Bachelor's Degree" },
+    96→  { value: 'master', label: "Master's Degree" },
+    97→  { value: 'phd', label: 'Ph.D / Doctorate' },
+    98→  { value: 'other', label: 'Other' },
+    99→];
+   100→
+   101→const occupationOptions = [
+   102→  { value: '', label: 'Select Occupation' },
+   103→  { value: 'salaried', label: 'Salaried Employee' },
+   104→  { value: 'business', label: 'Business Owner' },
+   105→  { value: 'self_employed', label: 'Self Employed' },
+   106→  { value: 'professional', label: 'Professional' },
+   107→  { value: 'farmer', label: 'Farmer / Agriculturist' },
+   108→  { value: 'retired', label: 'Retired' },
+   109→  { value: 'other', label: 'Other' },
+   110→];
+   111→
+   112→const stateOptions = [
+   113→  { value: '', label: 'Select State' },
+   114→  { value: 'andhra_pradesh', label: 'Andhra Pradesh' },
+   115→  { value: 'arunachal_pradesh', label: 'Arunachal Pradesh' },
+   116→  { value: 'assam', label: 'Assam' },
+   117→  { value: 'bihar', label: 'Bihar' },
+   118→  { value: 'chhattisgarh', label: 'Chhattisgarh' },
+   119→  { value: 'delhi', label: 'Delhi' },
+   120→  { value: 'goa', label: 'Goa' },
+   121→  { value: 'gujarat', label: 'Gujarat' },
+   122→  { value: 'haryana', label: 'Haryana' },
+   123→  { value: 'himachal_pradesh', label: 'Himachal Pradesh' },
+   124→  { value: 'jharkhand', label: 'Jharkhand' },
+   125→  { value: 'karnataka', label: 'Karnataka' },
+   126→  { value: 'kerala', label: 'Kerala' },
+   127→  { value: 'madhya_pradesh', label: 'Madhya Pradesh' },
+   128→  { value: 'maharashtra', label: 'Maharashtra' },
+   129→  { value: 'manipur', label: 'Manipur' },
+   130→  { value: 'meghalaya', label: 'Meghalaya' },
+   131→  { value: 'mizoram', label: 'Mizoram' },
+   132→  { value: 'nagaland', label: 'Nagaland' },
+   133→  { value: 'odisha', label: 'Odisha' },
+   134→  { value: 'punjab', label: 'Punjab' },
+   135→  { value: 'rajasthan', label: 'Rajasthan' },
+   136→  { value: 'sikkim', label: 'Sikkim' },
+   137→  { value: 'tamil_nadu', label: 'Tamil Nadu' },
+   138→  { value: 'telangana', label: 'Telangana' },
+   139→  { value: 'tripura', label: 'Tripura' },
+   140→  { value: 'uttar_pradesh', label: 'Uttar Pradesh' },
+   141→  { value: 'uttarakhand', label: 'Uttarakhand' },
+   142→  { value: 'west_bengal', label: 'West Bengal' },
+   143→];
+   144→
+   145→const investmentOptions = [
+   146→  { value: '', label: 'Select Investment Capacity' },
+   147→  { value: '25_30', label: '₹25 - 30 Lakhs' },
+   148→  { value: '30_50', label: '₹30 - 50 Lakhs' },
+   149→  { value: '50_75', label: '₹50 - 75 Lakhs' },
+   150→  { value: '75_100', label: '₹75 - 100 Lakhs' },
+   151→  { value: '100_plus', label: '₹1 Crore+' },
+   152→];
+   153→
+   154→const experienceOptions = [
+   155→  { value: '', label: 'Select Experience' },
+   156→  { value: 'none', label: 'No Business Experience' },
+   157→  { value: '1_3', label: '1 - 3 Years' },
+   158→  { value: '3_5', label: '3 - 5 Years' },
+   159→  { value: '5_10', label: '5 - 10 Years' },
+   160→  { value: '10_plus', label: '10+ Years' },
+   161→];
+   162→
+   163→const timelineOptions = [
+   164→  { value: '', label: 'Select Timeline' },
+   165→  { value: 'immediate', label: 'Immediately' },
+   166→  { value: '1_3_months', label: '1 - 3 Months' },
+   167→  { value: '3_6_months', label: '3 - 6 Months' },
+   168→  { value: '6_12_months', label: '6 - 12 Months' },
+   169→  { value: 'exploring', label: 'Just Exploring' },
+   170→];
+   171→
+   172→const phoneRegex = /^[6-9]\d{9}$/;
+   173→const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+   174→const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+   175→const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+   176→
+   177→export function ApplicationForm() {
+   178→  const { setViewMode } = useAppStore();
+   179→  const [currentStep, setCurrentStep] = useState(0);
+   180→  const [formData, setFormData] = useState<FormData>(initialFormData);
+   181→  const [errors, setErrors] = useState<FormErrors>({});
+   182→  const [isSubmitting, setIsSubmitting] = useState(false);
+   183→  const [isSubmitted, setIsSubmitted] = useState(false);
+   184→  const [applicationId, setApplicationId] = useState('');
+   185→
+   186→  const handleFieldChange = useCallback(
+   187→    (field: keyof FormData, value: string | boolean) => {
+   188→      setFormData((prev) => ({ ...prev, [field]: value }));
+   189→      if (errors[field as keyof FormErrors]) {
+   190→        setErrors((prev) => ({ ...prev, [field]: undefined }));
+   191→      }
+   192→    },
+   193→    [errors]
+   194→  );
+   195→
+   196→  const handleFileChange = useCallback(
+   197→    (field: 'identityProof' | 'propertyDocs' | 'resume', file: File | null) => {
+   198→      setFormData((prev) => ({ ...prev, [field]: file }));
+   199→      if (errors[field]) {
+   200→        setErrors((prev) => ({ ...prev, [field]: undefined }));
+   201→      }
+   202→    },
+   203→    [errors]
+   204→  );
+   205→
+   206→  const validateStep = useCallback(
+   207→    (step: number): boolean => {
+   208→      const newErrors: FormErrors = {};
+   209→
+   210→      if (step === 0) {
+   211→        if (!formData.fullName || formData.fullName.trim().length < 2) {
+   212→          newErrors.fullName = 'Full name is required (minimum 2 characters)';
+   213→        }
+   214→        if (!formData.phone || !phoneRegex.test(formData.phone)) {
+   215→          newErrors.phone = 'Enter a valid 10-digit Indian mobile number';
+   216→        }
+   217→        if (!formData.whatsapp || !phoneRegex.test(formData.whatsapp)) {
+   218→          newErrors.whatsapp = 'Enter a valid 10-digit WhatsApp number';
+   219→        }
+   220→        if (!formData.email || !emailRegex.test(formData.email)) {
+   221→          newErrors.email = 'Enter a valid email address';
+   222→        }
+   223→      }
+   224→
+   225→      if (step === 1) {
+   226→        if (!formData.address || formData.address.trim().length === 0) {
+   227→          newErrors.address = 'Address is required';
+   228→        }
+   229→        if (!formData.city || formData.city.trim().length === 0) {
+   230→          newErrors.city = 'City is required';
+   231→        }
+   232→        if (!formData.state || formData.state.trim().length === 0) {
+   233→          newErrors.state = 'State is required';
+   234→        }
+   235→        if (!formData.pinCode || formData.pinCode.trim().length === 0) {
+   236→          newErrors.pinCode = 'PIN Code is required';
+   237→        }
+   238→        if (!formData.investmentCapacity || formData.investmentCapacity.trim().length === 0) {
+   239→          newErrors.investmentCapacity = 'Investment capacity is required';
+   240→        }
+   241→      }
+   242→
+   243→      if (step === 2) {
+   244→        if (!formData.identityProof) {
+   245→          newErrors.identityProof = 'Identity proof is required';
+   246→        } else if (formData.identityProof.size > MAX_FILE_SIZE) {
+   247→          newErrors.identityProof = 'File must be under 5MB';
+   248→        } else if (!ALLOWED_TYPES.includes(formData.identityProof.type)) {
+   249→          newErrors.identityProof = 'Only PDF, JPG, or PNG files allowed';
+   250→        }
+   251→
+   252→        if (!formData.propertyDocs) {
+   253→          newErrors.propertyDocs = 'Property documents are required';
+   254→        } else if (formData.propertyDocs.size > MAX_FILE_SIZE) {
+   255→          newErrors.propertyDocs = 'File must be under 5MB';
+   256→        } else if (!ALLOWED_TYPES.includes(formData.propertyDocs.type)) {
+   257→          newErrors.propertyDocs = 'Only PDF, JPG, or PNG files allowed';
+   258→        }
+   259→
+   260→        if (formData.resume && formData.resume.size > MAX_FILE_SIZE) {
+   261→          newErrors.resume = 'File must be under 5MB';
+   262→        } else if (formData.resume && !ALLOWED_TYPES.includes(formData.resume.type)) {
+   263→          newErrors.resume = 'Only PDF, JPG, or PNG files allowed';
+   264→        }
+   265→
+   266→        if (!formData.termsAccepted) {
+   267→          newErrors.termsAccepted = 'You must accept the terms and conditions';
+   268→        }
+   269→      }
+   270→
+   271→      setErrors(newErrors);
+   272→      return Object.keys(newErrors).length === 0;
+   273→    },
+   274→    [formData]
+   275→  );
+   276→
+   277→  const handleNext = useCallback(() => {
+   278→    if (validateStep(currentStep)) {
+   279→      setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
+   280→    }
+   281→  }, [currentStep, validateStep]);
+   282→
+   283→  const handlePrevious = useCallback(() => {
+   284→    setCurrentStep((prev) => Math.max(prev - 1, 0));
+   285→  }, []);
+   286→
+   287→  const handleSubmit = useCallback(async () => {
+   288→    if (!validateStep(2)) return;
+   289→
+   290→    setIsSubmitting(true);
+   291→
+   292→    try {
+   293→      const payload = {
+   294→        fullName: formData.fullName,
+   295→        phone: formData.phone,
+   296→        whatsapp: formData.whatsapp,
+   297→        email: formData.email,
+   298→        address: formData.address,
+   299→        city: formData.city,
+   300→        state: formData.state,
+   301→        pinCode: formData.pinCode,
+   302→        dateOfBirth: formData.dateOfBirth,
+   303→        education: formData.education,
+   304→        occupation: formData.occupation,
+   305→        businessExperience: formData.businessExperience,
+   306→        existingBusiness: formData.existingBusiness,
+   307→        investmentCapacity: formData.investmentCapacity,
+   308→        landSize: formData.landSize,
+   309→        preferredLocation: formData.preferredLocation,
+   310→        expectedTimeline: formData.expectedTimeline,
+   311→        additionalComments: formData.additionalComments,
+   312→        termsAccepted: formData.termsAccepted,
+   313→        source: 'dealership_application',
+   314→        interest: 'Dealership Franchise',
+   315→      };
+   316→
+   317→      const response = await fetch('/api/leads', {
+   318→        method: 'POST',
+   319→        headers: { 'Content-Type': 'application/json' },
+   320→        body: JSON.stringify(payload),
+   321→      });
+   322→
+   323→      const data = await response.json();
+   324→
+   325→      // Artificial delay for UX
+   326→      await new Promise((resolve) => setTimeout(resolve, 2000));
+   327→
+   328→      if (response.ok) {
+   329→        const id = data.id?.toString() || data.name?.toString() || '00000000';
+   330→        setApplicationId(id.slice(0, 8).toUpperCase());
+   331→        setIsSubmitted(true);
+   332→      }
+   333→    } catch {
+   334→      // Still show success for demo purposes
+   335→      await new Promise((resolve) => setTimeout(resolve, 2000));
+   336→      setApplicationId('DEMO' + Date.now().toString().slice(-5));
+   337→      setIsSubmitted(true);
+   338→    } finally {
+   339→      setIsSubmitting(false);
+   340→    }
+   341→  }, [formData, validateStep]);
+   342→
+   343→  const handleBackToHome = useCallback(() => {
+   344→    setViewMode('home');
+   345→  }, [setViewMode]);
+   346→
+   347→  return (
+   348→    <div className="max-w-3xl mx-auto px-4 py-12">
+   349→      {/* Success Screen */}
+   350→      <AnimatePresence mode="wait">
+   351→        {isSubmitted ? (
+   352→          <motion.div
+   353→            key="success"
+   354→            initial={{ opacity: 0, scale: 0.9 }}
+   355→            animate={{ opacity: 1, scale: 1 }}
+   356→            transition={{ duration: 0.5, ease: 'easeOut' }}
+   357→            className="min-h-[80vh] flex items-center justify-center"
+   358→          >
+   359→            <div className="premium-card-flat p-10 md:p-16 text-center max-w-lg mx-auto">
+   360→              <motion.div
+   361→                initial={{ scale: 0 }}
+   362→                animate={{ scale: 1 }}
+   363→                transition={{ type: 'spring', stiffness: 200, damping: 12, delay: 0.2 }}
+   364→              >
+   365→                <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6">
+   366→                  <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+   367→                </div>
+   368→              </motion.div>
+   369→              <motion.h2
+   370→                initial={{ opacity: 0, y: 10 }}
+   371→                animate={{ opacity: 1, y: 0 }}
+   372→                transition={{ delay: 0.4 }}
+   373→                className="text-2xl md:text-3xl font-bold text-slate-900 mb-3"
+   374→              >
+   375→                Application Submitted Successfully!
+   376→              </motion.h2>
+   377→              <motion.p
+   378→                initial={{ opacity: 0, y: 10 }}
+   379→                animate={{ opacity: 1, y: 0 }}
+   380→                transition={{ delay: 0.5 }}
+   381→                className="text-slate-500 text-sm leading-relaxed mb-2"
+   382→              >
+   383→                Our team will contact you within 48 hours.
+   384→              </motion.p>
+   385→              <motion.p
+   386→                initial={{ opacity: 0, y: 10 }}
+   387→                animate={{ opacity: 1, y: 0 }}
+   388→                transition={{ delay: 0.6 }}
+   389→                className="text-slate-400 text-xs font-mono"
+   390→              >
+   391→                Application ID: #{applicationId}
+   392→              </motion.p>
+   393→              <motion.div
+   394→                initial={{ opacity: 0, y: 10 }}
+   395→                animate={{ opacity: 1, y: 0 }}
+   396→                transition={{ delay: 0.7 }}
+   397→                className="mt-8"
+   398→              >
+   399→                <button
+   400→                  onClick={handleBackToHome}
+   401→                  className="btn-primary w-full py-3 px-6 text-sm"
+   402→                >
+   403→                  Back to Home
+   404→                </button>
+   405→              </motion.div>
+   406→            </div>
+   407→          </motion.div>
+   408→        ) : (
+   409→          <motion.div
+   410→            key="form"
+   411→            initial={{ opacity: 0, y: 20 }}
+   412→            animate={{ opacity: 1, y: 0 }}
+   413→            exit={{ opacity: 0, y: -20, transition: { duration: 0.3 } }}
+   414→            transition={{ duration: 0.5, ease: 'easeOut' }}
+   415→          >
+   416→            {/* Header */}
+   417→            <div className="text-center mb-8">
+   418→              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+   419→                Dealership Application
+   420→              </h1>
+   421→              <p className="text-slate-500 mt-2 text-sm">
+   422→                Join our growing franchise network — fill in the details below
+   423→              </p>
+   424→            </div>
+   425→
+   426→            {/* Step Indicator */}
+   427→            <div className="flex items-center justify-center mb-10 px-4">
+   428→              {steps.map((step, index) => (
+   429→                <div key={step.label} className="flex items-center">
+   430→                  <div className="flex flex-col items-center">
+   431→                    <div
+   432→                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 border-2 ${
+   433→                        index < currentStep
+   434→                          ? 'bg-emerald-500 border-emerald-500 text-white'
+   435→                          : index === currentStep
+   436→                            ? 'bg-emerald-50 border-emerald-500 text-emerald-600'
+   437→                            : 'bg-white border-slate-200 text-slate-400'
+   438→                      }`}
+   439→                    >
+   440→                      {index < currentStep ? (
+   441→                        <CheckCircle2 className="h-5 w-5" />
+   442→                      ) : (
+   443→                        <span className="text-sm font-semibold">{index + 1}</span>
+   444→                      )}
+   445→                    </div>
+   446→                    <span
+   447→                      className={`text-xs mt-2 font-medium hidden sm:block ${
+   448→                        index === currentStep ? 'text-emerald-600' : index < currentStep ? 'text-emerald-500' : 'text-slate-400'
+   449→                      }`}
+   450→                    >
+   451→                      {step.label}
+   452→                    </span>
+   453→                  </div>
+   454→                  {index < steps.length - 1 && (
+   455→                    <div
+   456→                      className={`w-16 sm:w-24 h-0.5 mx-2 transition-all duration-300 ${
+   457→                        index < currentStep ? 'bg-emerald-500' : 'bg-slate-200'
+   458→                      }`}
+   459→                    />
+   460→                  )}
+   461→                </div>
+   462→              ))}
+   463→            </div>
+   464→
+   465→            {/* Step Content */}
+   466→            <AnimatePresence mode="wait">
+   467→              <motion.div
+   468→                key={currentStep}
+   469→                initial={{ opacity: 0, x: 20 }}
+   470→                animate={{ opacity: 1, x: 0 }}
+   471→                exit={{ opacity: 0, x: -20, transition: { duration: 0.2 } }}
+   472→                transition={{ duration: 0.3, ease: 'easeOut' }}
+   473→                className="premium-card-flat p-6 md:p-8"
+   474→              >
+   475→                {/* Step 1: Personal Information */}
+   476→                {currentStep === 0 && (
+   477→                  <div className="space-y-5">
+   478→                    <h2 className="text-lg font-semibold text-slate-900 mb-1">
+   479→                      Personal Information
+   480→                    </h2>
+   481→                    <p className="text-sm text-slate-400 -mt-3 mb-4">
+   482→                      Tell us about yourself
+   483→                    </p>
+   484→
+   485→                    {/* Full Name */}
+   486→                    <div>
+   487→                      <label className="form-label">
+   488→                        <User className="inline-block h-3.5 w-3.5 mr-1.5 opacity-60" />
+   489→                        Full Name <span className="text-red-400">*</span>
+   490→                      </label>
+   491→                      <input
+   492→                        type="text"
+   493→                        className={`form-input${errors.fullName ? ' error' : ''}`}
+   494→                        placeholder="Enter your full name"
+   495→                        value={formData.fullName}
+   496→                        onChange={(e) => handleFieldChange('fullName', e.target.value)}
+   497→                      />
+   498→                      {errors.fullName && <div className="form-error">{errors.fullName}</div>}
+   499→                    </div>
+   500→
+   501→                    {/* Phone & WhatsApp */}
+   502→                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+   503→                      <div>
+   504→                        <label className="form-label">
+   505→                          <Phone className="inline-block h-3.5 w-3.5 mr-1.5 opacity-60" />
+   506→                          Mobile Number <span className="text-red-400">*</span>
+   507→                        </label>
+   508→                        <input
+   509→                          type="tel"
+   510→                          className={`form-input${errors.phone ? ' error' : ''}`}
+   511→                          placeholder="10-digit mobile number"
+   512→                          value={formData.phone}
+   513→                          onChange={(e) => handleFieldChange('phone', e.target.value)}
+   514→                        />
+   515→                        {errors.phone && <div className="form-error">{errors.phone}</div>}
+   516→                      </div>
+   517→                      <div>
+   518→                        <label className="form-label">
+   519→                          <Phone className="inline-block h-3.5 w-3.5 mr-1.5 opacity-60" />
+   520→                          WhatsApp Number <span className="text-red-400">*</span>
+   521→                        </label>
+   522→                        <input
+   523→                          type="tel"
+   524→                          className={`form-input${errors.whatsapp ? ' error' : ''}`}
+   525→                          placeholder="10-digit WhatsApp number"
+   526→                          value={formData.whatsapp}
+   527→                          onChange={(e) => handleFieldChange('whatsapp', e.target.value)}
+   528→                        />
+   529→                        {errors.whatsapp && <div className="form-error">{errors.whatsapp}</div>}
+   530→                      </div>
+   531→                    </div>
+   532→
+   533→                    {/* Email */}
+   534→                    <div>
+   535→                      <label className="form-label">
+   536→                        <Mail className="inline-block h-3.5 w-3.5 mr-1.5 opacity-60" />
+   537→                        Email Address <span className="text-red-400">*</span>
+   538→                      </label>
+   539→                      <input
+   540→                        type="email"
+   541→                        className={`form-input${errors.email ? ' error' : ''}`}
+   542→                        placeholder="your@email.com"
+   543→                        value={formData.email}
+   544→                        onChange={(e) => handleFieldChange('email', e.target.value)}
+   545→                      />
+   546→                      {errors.email && <div className="form-error">{errors.email}</div>}
+   547→                    </div>
+   548→
+   549→                    {/* Date of Birth */}
+   550→                    <div>
+   551→                      <label className="form-label">
+   552→                        <Calendar className="inline-block h-3.5 w-3.5 mr-1.5 opacity-60" />
+   553→                        Date of Birth
+   554→                      </label>
+   555→                      <input
+   556→                        type="date"
+   557→                        className="form-input"
+   558→                        value={formData.dateOfBirth}
+   559→                        onChange={(e) => handleFieldChange('dateOfBirth', e.target.value)}
+   560→                      />
+   561→                    </div>
+   562→
+   563→                    {/* Education & Occupation */}
+   564→                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+   565→                      <div>
+   566→                        <label className="form-label">
+   567→                          <FileText className="inline-block h-3.5 w-3.5 mr-1.5 opacity-60" />
+   568→                          Education
+   569→                        </label>
+   570→                        <select
+   571→                          className="form-input appearance-none"
+   572→                          value={formData.education}
+   573→                          onChange={(e) => handleFieldChange('education', e.target.value)}
+   574→                        >
+   575→                          {educationOptions.map((opt) => (
+   576→                            <option key={opt.value} value={opt.value}>
+   577→                              {opt.label}
+   578→                            </option>
+   579→                          ))}
+   580→                        </select>
+   581→                      </div>
+   582→                      <div>
+   583→                        <label className="form-label">
+   584→                          <User className="inline-block h-3.5 w-3.5 mr-1.5 opacity-60" />
+   585→                          Occupation
+   586→                        </label>
+   587→                        <select
+   588→                          className="form-input appearance-none"
+   589→                          value={formData.occupation}
+   590→                          onChange={(e) => handleFieldChange('occupation', e.target.value)}
+   591→                        >
+   592→                          {occupationOptions.map((opt) => (
+   593→                            <option key={opt.value} value={opt.value}>
+   594→                              {opt.label}
+   595→                            </option>
+   596→                          ))}
+   597→                        </select>
+   598→                      </div>
+   599→                    </div>
+   600→                  </div>
+   601→                )}
+   602→
+   603→                {/* Step 2: Business Details */}
+   604→                {currentStep === 1 && (
+   605→                  <div className="space-y-5">
+   606→                    <h2 className="text-lg font-semibold text-slate-900 mb-1">
+   607→                      Business Details
+   608→                    </h2>
+   609→                    <p className="text-sm text-slate-400 -mt-3 mb-4">
+   610→                      Share your business and location preferences
+   611→                    </p>
+   612→
+   613→                    {/* Address */}
+   614→                    <div>
+   615→                      <label className="form-label">
+   616→                        <MapPin className="inline-block h-3.5 w-3.5 mr-1.5 opacity-60" />
+   617→                        Address <span className="text-red-400">*</span>
+   618→                      </label>
+   619→                      <input
+   620→                        type="text"
+   621→                        className={`form-input${errors.address ? ' error' : ''}`}
+   622→                        placeholder="Street address"
+   623→                        value={formData.address}
+   624→                        onChange={(e) => handleFieldChange('address', e.target.value)}
+   625→                      />
+   626→                      {errors.address && <div className="form-error">{errors.address}</div>}
+   627→                    </div>
+   628→
+   629→                    {/* City, State, PIN */}
+   630→                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+   631→                      <div>
+   632→                        <label className="form-label">
+   633→                          City <span className="text-red-400">*</span>
+   634→                        </label>
+   635→                        <input
+   636→                          type="text"
+   637→                          className={`form-input${errors.city ? ' error' : ''}`}
+   638→                          placeholder="City"
+   639→                          value={formData.city}
+   640→                          onChange={(e) => handleFieldChange('city', e.target.value)}
+   641→                        />
+   642→                        {errors.city && <div className="form-error">{errors.city}</div>}
+   643→                      </div>
+   644→                      <div>
+   645→                        <label className="form-label">
+   646→                          State <span className="text-red-400">*</span>
+   647→                        </label>
+   648→                        <select
+   649→                          className={`form-input appearance-none${errors.state ? ' error' : ''}`}
+   650→                          value={formData.state}
+   651→                          onChange={(e) => handleFieldChange('state', e.target.value)}
+   652→                        >
+   653→                          {stateOptions.map((opt) => (
+   654→                            <option key={opt.value} value={opt.value}>
+   655→                              {opt.label}
+   656→                            </option>
+   657→                          ))}
+   658→                        </select>
+   659→                        {errors.state && <div className="form-error">{errors.state}</div>}
+   660→                      </div>
+   661→                      <div>
+   662→                        <label className="form-label">
+   663→                          PIN Code <span className="text-red-400">*</span>
+   664→                        </label>
+   665→                        <input
+   666→                          type="text"
+   667→                          className={`form-input${errors.pinCode ? ' error' : ''}`}
+   668→                          placeholder="e.g. 560001"
+   669→                          value={formData.pinCode}
+   670→                          onChange={(e) => handleFieldChange('pinCode', e.target.value)}
+   671→                        />
+   672→                        {errors.pinCode && <div className="form-error">{errors.pinCode}</div>}
+   673→                      </div>
+   674→                    </div>
+   675→
+   676→                    {/* Business Experience & Existing Business */}
+   677→                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+   678→                      <div>
+   679→                        <label className="form-label">
+   680→                          Business Experience
+   681→                        </label>
+   682→                        <select
+   683→                          className="form-input appearance-none"
+   684→                          value={formData.businessExperience}
+   685→                          onChange={(e) => handleFieldChange('businessExperience', e.target.value)}
+   686→                        >
+   687→                          {experienceOptions.map((opt) => (
+   688→                            <option key={opt.value} value={opt.value}>
+   689→                              {opt.label}
+   690→                            </option>
+   691→                          ))}
+   692→                        </select>
+   693→                      </div>
+   694→                      <div>
+   695→                        <label className="form-label">
+   696→                          Existing Business
+   697→                        </label>
+   698→                        <input
+   699→                          type="text"
+   700→                          className="form-input"
+   701→                          placeholder="Describe any existing business"
+   702→                          value={formData.existingBusiness}
+   703→                          onChange={(e) => handleFieldChange('existingBusiness', e.target.value)}
+   704→                        />
+   705→                      </div>
+   706→                    </div>
+   707→
+   708→                    {/* Investment Capacity */}
+   709→                    <div>
+   710→                      <label className="form-label">
+   711→                        Investment Capacity <span className="text-red-400">*</span>
+   712→                      </label>
+   713→                      <select
+   714→                        className={`form-input appearance-none${errors.investmentCapacity ? ' error' : ''}`}
+   715→                        value={formData.investmentCapacity}
+   716→                        onChange={(e) => handleFieldChange('investmentCapacity', e.target.value)}
+   717→                      >
+   718→                        {investmentOptions.map((opt) => (
+   719→                          <option key={opt.value} value={opt.value}>
+   720→                            {opt.label}
+   721→                          </option>
+   722→                        ))}
+   723→                      </select>
+   724→                      {errors.investmentCapacity && <div className="form-error">{errors.investmentCapacity}</div>}
+   725→                    </div>
+   726→
+   727→                    {/* Land Size & Preferred Location */}
+   728→                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+   729→                      <div>
+   730→                        <label className="form-label">
+   731→                          Land / Showroom Size
+   732→                        </label>
+   733→                        <input
+   734→                          type="text"
+   735→                          className="form-input"
+   736→                          placeholder="e.g. 2000 sq. ft."
+   737→                          value={formData.landSize}
+   738→                          onChange={(e) => handleFieldChange('landSize', e.target.value)}
+   739→                        />
+   740→                      </div>
+   741→                      <div>
+   742→                        <label className="form-label">
+   743→                          Preferred Location
+   744→                        </label>
+   745→                        <input
+   746→                          type="text"
+   747→                          className="form-input"
+   748→                          placeholder="City or area preference"
+   749→                          value={formData.preferredLocation}
+   750→                          onChange={(e) => handleFieldChange('preferredLocation', e.target.value)}
+   751→                        />
+   752→                      </div>
+   753→                    </div>
+   754→
+   755→                    {/* Expected Timeline */}
+   756→                    <div>
+   757→                      <label className="form-label">
+   758→                        <Calendar className="inline-block h-3.5 w-3.5 mr-1.5 opacity-60" />
+   759→                        Expected Timeline
+   760→                      </label>
+   761→                      <select
+   762→                        className="form-input appearance-none"
+   763→                        value={formData.expectedTimeline}
+   764→                        onChange={(e) => handleFieldChange('expectedTimeline', e.target.value)}
+   765→                      >
+   766→                        {timelineOptions.map((opt) => (
+   767→                          <option key={opt.value} value={opt.value}>
+   768→                            {opt.label}
+   769→                          </option>
+   770→                        ))}
+   771→                      </select>
+   772→                    </div>
+   773→                  </div>
+   774→                )}
+   775→
+   776→                {/* Step 3: Documents & Submit */}
+   777→                {currentStep === 2 && (
+   778→                  <div className="space-y-5">
+   779→                    <h2 className="text-lg font-semibold text-slate-900 mb-1">
+   780→                      Documents & Submit
+   781→                    </h2>
+   782→                    <p className="text-sm text-slate-400 -mt-3 mb-4">
+   783→                      Upload required documents and review your application
+   784→                    </p>
+   785→
+   786→                    {/* Identity Proof */}
+   787→                    <div>
+   788→                      <label className="form-label">
+   789→                        <FileText className="inline-block h-3.5 w-3.5 mr-1.5 opacity-60" />
+   790→                        Identity Proof <span className="text-red-400">*</span>
+   791→                        <span className="text-xs text-slate-400 ml-1">(PDF, JPG, PNG — Max 5MB)</span>
+   792→                      </label>
+   793→                      <div
+   794→                        className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+   795→                          errors.identityProof
+   796→                            ? 'border-red-300 bg-red-50/50'
+   797→                            : formData.identityProof
+   798→                              ? 'border-emerald-300 bg-emerald-50/50'
+   799→                              : 'border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30'
+   800→                        }`}
+   801→                        onClick={() => {
+   802→                          const input = document.getElementById('identity-proof') as HTMLInputElement;
+   803→                          input?.click();
+   804→                        }}
+   805→                      >
+   806→                        <input
+   807→                          id="identity-proof"
+   808→                          type="file"
+   809→                          accept=".pdf,.jpg,.jpeg,.png"
+   810→                          className="hidden"
+   811→                          onChange={(e) => {
+   812→                            const file = e.target.files?.[0] || null;
+   813→                            handleFileChange('identityProof', file);
+   814→                          }}
+   815→                        />
+   816→                        {formData.identityProof ? (
+   817→                          <div className="flex items-center justify-center gap-2 text-emerald-600">
+   818→                            <FileText className="h-5 w-5" />
+   819→                            <span className="text-sm font-medium truncate max-w-[250px]">
+   820→                              {formData.identityProof.name}
+   821→                            </span>
+   822→                          </div>
+   823→                        ) : (
+   824→                          <div className="flex flex-col items-center gap-2 text-slate-400">
+   825→                            <Upload className="h-6 w-6" />
+   826→                            <span className="text-sm">Click to upload</span>
+   827→                          </div>
+   828→                        )}
+   829→                      </div>
+   830→                      {errors.identityProof && <div className="form-error">{errors.identityProof}</div>}
+   831→                    </div>
+   832→
+   833→                    {/* Property Documents */}
+   834→                    <div>
+   835→                      <label className="form-label">
+   836→                        <FileText className="inline-block h-3.5 w-3.5 mr-1.5 opacity-60" />
+   837→                        Property Documents <span className="text-red-400">*</span>
+   838→                        <span className="text-xs text-slate-400 ml-1">(PDF, JPG, PNG — Max 5MB)</span>
+   839→                      </label>
+   840→                      <div
+   841→                        className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+   842→                          errors.propertyDocs
+   843→                            ? 'border-red-300 bg-red-50/50'
+   844→                            : formData.propertyDocs
+   845→                              ? 'border-emerald-300 bg-emerald-50/50'
+   846→                              : 'border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30'
+   847→                        }`}
+   848→                        onClick={() => {
+   849→                          const input = document.getElementById('property-docs') as HTMLInputElement;
+   850→                          input?.click();
+   851→                        }}
+   852→                      >
+   853→                        <input
+   854→                          id="property-docs"
+   855→                          type="file"
+   856→                          accept=".pdf,.jpg,.jpeg,.png"
+   857→                          className="hidden"
+   858→                          onChange={(e) => {
+   859→                            const file = e.target.files?.[0] || null;
+   860→                            handleFileChange('propertyDocs', file);
+   861→                          }}
+   862→                        />
+   863→                        {formData.propertyDocs ? (
+   864→                          <div className="flex items-center justify-center gap-2 text-emerald-600">
+   865→                            <FileText className="h-5 w-5" />
+   866→                            <span className="text-sm font-medium truncate max-w-[250px]">
+   867→                              {formData.propertyDocs.name}
+   868→                            </span>
+   869→                          </div>
+   870→                        ) : (
+   871→                          <div className="flex flex-col items-center gap-2 text-slate-400">
+   872→                            <Upload className="h-6 w-6" />
+   873→                            <span className="text-sm">Click to upload</span>
+   874→                          </div>
+   875→                        )}
+   876→                      </div>
+   877→                      {errors.propertyDocs && <div className="form-error">{errors.propertyDocs}</div>}
+   878→                    </div>
+   879→
+   880→                    {/* Resume */}
+   881→                    <div>
+   882→                      <label className="form-label">
+   883→                        <FileText className="inline-block h-3.5 w-3.5 mr-1.5 opacity-60" />
+   884→                        Resume / CV
+   885→                        <span className="text-xs text-slate-400 ml-1">(Optional — PDF, JPG, PNG — Max 5MB)</span>
+   886→                      </label>
+   887→                      <div
+   888→                        className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+   889→                          errors.resume
+   890→                            ? 'border-red-300 bg-red-50/50'
+   891→                            : formData.resume
+   892→                              ? 'border-emerald-300 bg-emerald-50/50'
+   893→                              : 'border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30'
+   894→                        }`}
+   895→                        onClick={() => {
+   896→                          const input = document.getElementById('resume-upload') as HTMLInputElement;
+   897→                          input?.click();
+   898→                        }}
+   899→                      >
+   900→                        <input
+   901→                          id="resume-upload"
+   902→                          type="file"
+   903→                          accept=".pdf,.jpg,.jpeg,.png"
+   904→                          className="hidden"
+   905→                          onChange={(e) => {
+   906→                            const file = e.target.files?.[0] || null;
+   907→                            handleFileChange('resume', file);
+   908→                          }}
+   909→                        />
+   910→                        {formData.resume ? (
+   911→                          <div className="flex items-center justify-center gap-2 text-emerald-600">
+   912→                            <FileText className="h-5 w-5" />
+   913→                            <span className="text-sm font-medium truncate max-w-[250px]">
+   914→                              {formData.resume.name}
+   915→                            </span>
+   916→                          </div>
+   917→                        ) : (
+   918→                          <div className="flex flex-col items-center gap-2 text-slate-400">
+   919→                            <Upload className="h-6 w-6" />
+   920→                            <span className="text-sm">Click to upload</span>
+   921→                          </div>
+   922→                        )}
+   923→                      </div>
+   924→                      {errors.resume && <div className="form-error">{errors.resume}</div>}
+   925→                    </div>
+   926→
+   927→                    {/* Additional Comments */}
+   928→                    <div>
+   929→                      <label className="form-label">
+   930→                        Additional Comments
+   931→                      </label>
+   932→                      <textarea
+   933→                        rows={3}
+   934→                        className="form-input resize-none"
+   935→                        placeholder="Any additional information you'd like to share..."
+   936→                        value={formData.additionalComments}
+   937→                        onChange={(e) => handleFieldChange('additionalComments', e.target.value)}
+   938→                      />
+   939→                    </div>
+   940→
+   941→                    {/* Terms & Conditions */}
+   942→                    <div>
+   943→                      <label className="flex items-start gap-3 cursor-pointer select-none">
+   944→                        <input
+   945→                          type="checkbox"
+   946→                          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+   947→                          checked={formData.termsAccepted}
+   948→                          onChange={(e) => handleFieldChange('termsAccepted', e.target.checked)}
+   949→                        />
+   950→                        <span className="text-sm text-slate-600 leading-relaxed">
+   951→                          I agree to the{' '}
+   952→                          <span className="text-emerald-600 font-medium cursor-pointer hover:underline">
+   953→                            Terms &amp; Conditions
+   954→                          </span>{' '}
+   955→                          and{' '}
+   956→                          <span className="text-emerald-600 font-medium cursor-pointer hover:underline">
+   957→                            Privacy Policy
+   958→                          </span>
+   959→                          . I authorize the company to verify the information provided and contact me regarding this application.
+   960→                        </span>
+   961→                      </label>
+   962→                      {errors.termsAccepted && <div className="form-error">{errors.termsAccepted}</div>}
+   963→                    </div>
+   964→                  </div>
+   965→                )}
+   966→
+   967→                {/* Navigation Buttons */}
+   968→                <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-100">
+   969→                  {currentStep > 0 ? (
+   970→                    <button
+   971→                      type="button"
+   972→                      onClick={handlePrevious}
+   973→                      className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-700 transition-colors px-4 py-2 rounded-lg hover:bg-slate-50"
+   974→                    >
+   975→                      <ChevronLeft className="h-4 w-4" />
+   976→                      Previous
+   977→                    </button>
+   978→                  ) : (
+   979→                    <div />
+   980→                  )}
+   981→
+   982→                  {currentStep < steps.length - 1 ? (
+   983→                    <button
+   984→                      type="button"
+   985→                      onClick={handleNext}
+   986→                      className="btn-primary py-2.5 px-6 text-sm"
+   987→                    >
+   988→                      Next Step
+   989→                    </button>
+   990→                  ) : (
+   991→                    <button
+   992→                      type="button"
+   993→                      onClick={handleSubmit}
+   994→                      disabled={isSubmitting}
+   995→                      className={`btn-primary w-full sm:w-auto py-3 px-8 text-sm flex items-center justify-center gap-2 ${
+   996→                        isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+   997→                      }`}
+   998→                    >
+   999→                      {isSubmitting ? (
+  1000→                        <>
+  1001→                          <Loader2 className="h-4 w-4 animate-spin" />
+  1002→                          Submitting Application...
+  1003→                        </>
+  1004→                      ) : (
+  1005→                        'Submit Application'
+  1006→                      )}
+  1007→                    </button>
+  1008→                  )}
+  1009→                </div>
+  1010→              </motion.div>
+  1011→            </AnimatePresence>
+  1012→          </motion.div>
+  1013→        )}
+  1014→      </AnimatePresence>
+  1015→    </div>
+  1016→  );
+  1017→}
+  1018→

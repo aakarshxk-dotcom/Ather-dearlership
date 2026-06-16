@@ -1,0 +1,1180 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useState, useEffect, useCallback } from 'react';
+     4→     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→     5→import { useAppStore } from '@/store/app';
+     6→     6→import {
+     7→     7→  Users,
+     8→     8→  UserCheck,
+     9→     9→  UserX,
+    10→    10→  Clock,
+    11→    11→  FileText,
+    12→    12→  BarChart3,
+    13→    13→  Image,
+    14→    14→  LogOut,
+    15→    15→  Eye,
+    16→    16→  Trash2,
+    17→    17→  Download,
+    18→    18→  Search,
+    19→    19→  ChevronLeft,
+    20→    20→  Mail,
+    21→    21→  Phone,
+    22→    22→  MapPin,
+    23→    23→  Calendar,
+    24→    24→  ArrowUpDown,
+    25→    25→  Filter,
+    26→    26→  X,
+    27→    27→  CheckCircle2,
+    28→    28→  AlertCircle,
+    29→    29→  Loader2,
+    30→    30→} from 'lucide-react';
+    31→    31→
+    32→    32→function safeData(data: unknown) {
+    33→    33→  return JSON.parse(JSON.stringify(data, (_, v) => (typeof v === 'bigint' ? Number(v) : v)));
+    34→    34→}
+    35→    35→
+    36→    36→type TabId = 'dashboard' | 'leads' | 'gallery' | 'settings';
+    37→    37→type StatusFilter = 'all' | 'new' | 'reviewing' | 'shortlisted' | 'approved' | 'rejected' | 'on_hold';
+    38→    38→type GalleryCategory = 'all' | 'Showroom' | 'Interior' | 'Exterior' | 'Events' | 'Team';
+    39→    39→
+    40→    40→interface Lead {
+    41→    41→  id: number;
+    42→    42→  fullName: string;
+    43→    43→  phone: string;
+    44→    44→  whatsapp?: string;
+    45→    45→  email?: string;
+    46→    46→  dob?: string;
+    47→    47→  education?: string;
+    48→    48→  occupation?: string;
+    49→    49→  address?: string;
+    50→    50→  city: string;
+    51→    51→  state: string;
+    52→    52→  pinCode?: string;
+    53→    53→  businessExperience?: string;
+    54→    54→  investmentCapacity: string;
+    55→    55→  landSize?: string;
+    56→    56→  preferredLocation?: string;
+    57→    57→  timeline?: string;
+    58→    58→  status: string;
+    59→    59→  adminNotes?: string;
+    60→    60→  createdAt: string;
+    61→    61→}
+    62→    62→
+    63→    63→interface DashboardStats {
+    64→    64→  totalLeads: number;
+    65→    65→  newLeads: number;
+    66→    66→  approvedLeads: number;
+    67→    67→  rejectedLeads: number;
+    68→    68→  leadsThisWeek: number;
+    69→    69→  conversionRate: string;
+    70→    70→  avgInvestment: string;
+    71→    71→}
+    72→    72→
+    73→    73→interface GalleryImage {
+    74→    74→  id: number;
+    75→    75→  title: string;
+    76→    76→  category: string;
+    77→    77→  imageUrl: string;
+    78→    78→}
+    79→    79→
+    80→    80→const STATUS_BADGES: Record<string, { label: string; className: string }> = {
+    81→    81→  new: { label: 'New', className: 'bg-blue-100 text-blue-700' },
+    82→    82→  reviewing: { label: 'Reviewing', className: 'bg-amber-100 text-amber-700' },
+    83→    83→  shortlisted: { label: 'Shortlisted', className: 'bg-purple-100 text-purple-700' },
+    84→    84→  approved: { label: 'Approved', className: 'bg-green-100 text-green-700' },
+    85→    85→  rejected: { label: 'Rejected', className: 'bg-red-100 text-red-700' },
+    86→    86→  on_hold: { label: 'On Hold', className: 'bg-gray-100 text-gray-600' },
+    87→    87→};
+    88→    88→
+    89→    89→const TAB_CONFIG: { id: TabId; label: string; icon: React.ReactNode }[] = [
+    90→    90→  { id: 'dashboard', label: 'Overview', icon: <BarChart3 className="w-4 h-4" /> },
+    91→    91→  { id: 'leads', label: 'Leads', icon: <Users className="w-4 h-4" /> },
+    92→    92→  { id: 'gallery', label: 'Gallery', icon: <Image className="w-4 h-4" /> },
+    93→    93→  { id: 'settings', label: 'Settings', icon: <FileText className="w-4 h-4" /> },
+    94→    94→];
+    95→    95→
+    96→    96→const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+    97→    97→  { value: 'all', label: 'All' },
+    98→    98→  { value: 'new', label: 'New' },
+    99→    99→  { value: 'reviewing', label: 'Reviewing' },
+   100→   100→  { value: 'shortlisted', label: 'Shortlisted' },
+   101→   101→  { value: 'approved', label: 'Approved' },
+   102→   102→  { value: 'rejected', label: 'Rejected' },
+   103→   103→  { value: 'on_hold', label: 'On Hold' },
+   104→   104→];
+   105→   105→
+   106→   106→const GALLERY_CATEGORIES: { value: GalleryCategory; label: string }[] = [
+   107→   107→  { value: 'all', label: 'All' },
+   108→   108→  { value: 'Showroom', label: 'Showroom' },
+   109→   109→  { value: 'Interior', label: 'Interior' },
+   110→   110→  { value: 'Exterior', label: 'Exterior' },
+   111→   111→  { value: 'Events', label: 'Events' },
+   112→   112→  { value: 'Team', label: 'Team' },
+   113→   113→];
+   114→   114→
+   115→   115→const STATUS_CHANGE_OPTIONS = [
+   116→   116→  { value: 'new', label: 'New' },
+   117→   117→  { value: 'reviewing', label: 'Reviewing' },
+   118→   118→  { value: 'shortlisted', label: 'Shortlisted' },
+   119→   119→  { value: 'approved', label: 'Approved' },
+   120→   120→  { value: 'rejected', label: 'Rejected' },
+   121→   121→  { value: 'on_hold', label: 'On Hold' },
+   122→   122→];
+   123→   123→
+   124→   124→// ─── LOGIN VIEW ────────────────────────────────────────────────────────────────
+   125→   125→
+   126→   126→function LoginView() {
+   127→   127→  const { setAdminAuthenticated, setViewMode } = useAppStore();
+   128→   128→  const [username, setUsername] = useState('');
+   129→   129→  const [password, setPassword] = useState('');
+   130→   130→  const [error, setError] = useState('');
+   131→   131→  const [loading, setLoading] = useState(false);
+   132→   132→
+   133→   133→  const handleSubmit = async (e: React.FormEvent) => {
+   134→   134→    e.preventDefault();
+   135→   135→    setError('');
+   136→   136→    setLoading(true);
+   137→   137→    try {
+   138→   138→      const res = await fetch('/api/auth', {
+   139→   139→        method: 'POST',
+   140→   140→        headers: { 'Content-Type': 'application/json' },
+   141→   141→        body: JSON.stringify({ username, password }),
+   142→   142→      });
+   143→   143→      const data = await res.json();
+   144→   144→      if (data.success) {
+   145→   145→        setAdminAuthenticated(true, data.name);
+   146→   146→      } else {
+   147→   147→        setError(data.message || 'Invalid credentials');
+   148→   148→      }
+   149→   149→    } catch {
+   150→   150→      setError('Something went wrong. Please try again.');
+   151→   151→    } finally {
+   152→   152→      setLoading(false);
+   153→   153→    }
+   154→   154→  };
+   155→   155→
+   156→   156→  return (
+   157→   157→    <div className="min-h-screen bg-gray-50 flex items-start justify-center pt-20 px-4">
+   158→   158→      <motion.div
+   159→   159→        initial={{ opacity: 0, y: 20 }}
+   160→   160→        animate={{ opacity: 1, y: 0 }}
+   161→   161→        transition={{ duration: 0.4 }}
+   162→   162→        className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 max-w-md w-full"
+   163→   163→      >
+   164→   164→        {/* Logo */}
+   165→   165→        <div className="flex justify-center mb-6">
+   166→   166→          <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center">
+   167→   167→            <span className="text-white text-2xl font-bold">DF</span>
+   168→   168→          </div>
+   169→   169→        </div>
+   170→   170→
+   171→   171→        <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">Admin Login</h1>
+   172→   172→        <p className="text-sm text-slate-500 text-center mb-8">Sign in to manage your dealership</p>
+   173→   173→
+   174→   174→        {error && (
+   175→   175→          <motion.div
+   176→   176→            initial={{ opacity: 0, height: 0 }}
+   177→   177→            animate={{ opacity: 1, height: 'auto' }}
+   178→   178→            className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6"
+   179→   179→          >
+   180→   180→            <AlertCircle className="w-4 h-4 shrink-0" />
+   181→   181→            {error}
+   182→   182→          </motion.div>
+   183→   183→        )}
+   184→   184→
+   185→   185→        <form onSubmit={handleSubmit} className="space-y-5">
+   186→   186→          <div>
+   187→   187→            <label className="block text-sm font-medium text-slate-700 mb-1.5">Username</label>
+   188→   188→            <input
+   189→   189→              type="text"
+   190→   190→              value={username}
+   191→   191→              onChange={(e) => setUsername(e.target.value)}
+   192→   192→              className="form-input w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   193→   193→              placeholder="Enter username"
+   194→   194→              required
+   195→   195→            />
+   196→   196→          </div>
+   197→   197→          <div>
+   198→   198→            <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+   199→   199→            <input
+   200→   200→              type="password"
+   201→   201→              value={password}
+   202→   202→              onChange={(e) => setPassword(e.target.value)}
+   203→   203→              className="form-input w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   204→   204→              placeholder="Enter password"
+   205→   205→              required
+   206→   206→            />
+   207→   207→          </div>
+   208→   208→          <button
+   209→   209→            type="submit"
+   210→   210→            disabled={loading}
+   211→   211→            className="btn-primary w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+   212→   212→          >
+   213→   213→            {loading ? (
+   214→   214→              <>
+   215→   215→                <Loader2 className="w-4 h-4 animate-spin" />
+   216→   216→                Signing in...
+   217→   217→              </>
+   218→   218→            ) : (
+   219→   219→              'Sign In'
+   220→   220→            )}
+   221→   221→          </button>
+   222→   222→        </form>
+   223→   223→
+   224→   224→        <div className="mt-8 text-center">
+   225→   225→          <button
+   226→   226→            onClick={() => setViewMode('home')}
+   227→   227→            className="text-emerald-600 hover:text-emerald-700 text-sm font-medium transition"
+   228→   228→          >
+   229→   229→            ← Back to site
+   230→   230→          </button>
+   231→   231→        </div>
+   232→   232→      </motion.div>
+   233→   233→    </div>
+   234→   234→  );
+   235→   235→}
+   236→   236→
+   237→   237→// ─── STATUS BADGE ──────────────────────────────────────────────────────────────
+   238→   238→
+   239→   239→function StatusBadge({ status }: { status: string }) {
+   240→   240→  const config = STATUS_BADGES[status] || { label: status, className: 'bg-slate-100 text-slate-600' };
+   241→   241→  return (
+   242→   242→    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.className}`}>
+   243→   243→      {config.label}
+   244→   244→    </span>
+   245→   245→  );
+   246→   246→}
+   247→   247→
+   248→   248→// ─── OVERVIEW TAB ──────────────────────────────────────────────────────────────
+   249→   249→
+   250→   250→function OverviewTab({
+   251→   251→  stats,
+   252→   252→  leads,
+   253→   253→  onViewLead,
+   254→   254→  isLoading,
+   255→   255→}: {
+   256→   256→  stats: DashboardStats | null;
+   257→   257→  leads: Lead[];
+   258→   258→  onViewLead: (lead: Lead) => void;
+   259→   259→  isLoading: boolean;
+   260→   260→}) {
+   261→   261→  const statCards = [
+   262→   262→    {
+   263→   263→      label: 'Total Leads',
+   264→   264→      value: stats?.totalLeads ?? 0,
+   265→   265→      icon: <Users className="w-6 h-6" />,
+   266→   266→      bg: 'bg-emerald-50',
+   267→   267→      iconBg: 'bg-emerald-100',
+   268→   268→      iconColor: 'text-emerald-600',
+   269→   269→      border: 'border-emerald-200',
+   270→   270→    },
+   271→   271→    {
+   272→   272→      label: 'New Leads',
+   273→   273→      value: stats?.newLeads ?? 0,
+   274→   274→      icon: <Clock className="w-6 h-6" />,
+   275→   275→      bg: 'bg-blue-50',
+   276→   276→      iconBg: 'bg-blue-100',
+   277→   277→      iconColor: 'text-blue-600',
+   278→   278→      border: 'border-blue-200',
+   279→   279→    },
+   280→   280→    {
+   281→   281→      label: 'Approved',
+   282→   282→      value: stats?.approvedLeads ?? 0,
+   283→   283→      icon: <UserCheck className="w-6 h-6" />,
+   284→   284→      bg: 'bg-green-50',
+   285→   285→      iconBg: 'bg-green-100',
+   286→   286→      iconColor: 'text-green-600',
+   287→   287→      border: 'border-green-200',
+   288→   288→    },
+   289→   289→    {
+   290→   290→      label: 'Rejected',
+   291→   291→      value: stats?.rejectedLeads ?? 0,
+   292→   292→      icon: <UserX className="w-6 h-6" />,
+   293→   293→      bg: 'bg-red-50',
+   294→   294→      iconBg: 'bg-red-100',
+   295→   295→      iconColor: 'text-red-600',
+   296→   296→      border: 'border-red-200',
+   297→   297→    },
+   298→   298→  ];
+   299→   299→
+   300→   300→  const recentLeads = leads.slice(0, 5);
+   301→   301→
+   302→   302→  if (isLoading) {
+   303→   303→    return (
+   304→   304→      <div className="flex items-center justify-center py-20">
+   305→   305→        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+   306→   306→      </div>
+   307→   307→    );
+   308→   308→  }
+   309→   309→
+   310→   310→  return (
+   311→   311→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+   312→   312→      {/* Stat Cards */}
+   313→   313→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   314→   314→        {statCards.map((card) => (
+   315→   315→          <div
+   316→   316→            key={card.label}
+   317→   317→            className={`premium-card ${card.bg} ${card.border} border rounded-xl p-5 flex items-center gap-4`}
+   318→   318→          >
+   319→   319→            <div className={`${card.iconBg} ${card.iconColor} p-3 rounded-lg`}>
+   320→   320→              {card.icon}
+   321→   321→            </div>
+   322→   322→            <div>
+   323→   323→              <p className="text-2xl font-bold text-slate-900">{card.value}</p>
+   324→   324→              <p className="text-sm text-slate-500">{card.label}</p>
+   325→   325→            </div>
+   326→   326→          </div>
+   327→   327→        ))}
+   328→   328→      </div>
+   329→   329→
+   330→   330→      {/* Quick Stats */}
+   331→   331→      {stats && (
+   332→   332→        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   333→   333→          <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+   334→   334→            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+   335→   335→              <BarChart3 className="w-5 h-5 text-emerald-600" />
+   336→   336→            </div>
+   337→   337→            <div>
+   338→   338→              <p className="text-xs text-slate-500">Leads this week</p>
+   339→   339→              <p className="text-lg font-semibold text-slate-900">{stats.leadsThisWeek}</p>
+   340→   340→            </div>
+   341→   341→          </div>
+   342→   342→          <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+   343→   343→            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+   344→   344→              <CheckCircle2 className="w-5 h-5 text-blue-600" />
+   345→   345→            </div>
+   346→   346→            <div>
+   347→   347→              <p className="text-xs text-slate-500">Conversion rate</p>
+   348→   348→              <p className="text-lg font-semibold text-slate-900">{stats.conversionRate}</p>
+   349→   349→            </div>
+   350→   350→          </div>
+   351→   351→          <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+   352→   352→            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+   353→   353→              <ArrowUpDown className="w-5 h-5 text-purple-600" />
+   354→   354→            </div>
+   355→   355→            <div>
+   356→   356→              <p className="text-xs text-slate-500">Avg investment capacity</p>
+   357→   357→              <p className="text-lg font-semibold text-slate-900">{stats.avgInvestment}</p>
+   358→   358→            </div>
+   359→   359→          </div>
+   360→   360→        </div>
+   361→   361→      )}
+   362→   362→
+   363→   363→      {/* Recent Leads Table */}
+   364→   364→      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+   365→   365→        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+   366→   366→          <h3 className="font-semibold text-slate-900">Recent Leads</h3>
+   367→   367→          <span className="text-xs text-slate-400">Last {recentLeads.length} entries</span>
+   368→   368→        </div>
+   369→   369→        <div className="overflow-x-auto">
+   370→   370→          <table className="admin-table w-full">
+   371→   371→            <thead>
+   372→   372→              <tr className="border-b border-slate-100">
+   373→   373→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
+   374→   374→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Phone</th>
+   375→   375→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">City</th>
+   376→   376→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Investment</th>
+   377→   377→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+   378→   378→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+   379→   379→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Action</th>
+   380→   380→              </tr>
+   381→   381→            </thead>
+   382→   382→            <tbody className="divide-y divide-slate-100">
+   383→   383→              {recentLeads.map((lead) => (
+   384→   384→                <tr key={lead.id} className="hover:bg-slate-50 transition">
+   385→   385→                  <td className="px-6 py-3 text-sm font-medium text-slate-900">{lead.fullName}</td>
+   386→   386→                  <td className="px-6 py-3 text-sm text-slate-600">{lead.phone}</td>
+   387→   387→                  <td className="px-6 py-3 text-sm text-slate-600">{lead.city}</td>
+   388→   388→                  <td className="px-6 py-3 text-sm text-slate-600">{lead.investmentCapacity}</td>
+   389→   389→                  <td className="px-6 py-3">
+   390→   390→                    <StatusBadge status={lead.status} />
+   391→   391→                  </td>
+   392→   392→                  <td className="px-6 py-3 text-sm text-slate-500">{lead.createdAt?.split('T')[0] ?? '—'}</td>
+   393→   393→                  <td className="px-6 py-3">
+   394→   394→                    <button
+   395→   395→                      onClick={() => onViewLead(lead)}
+   396→   396→                      className="text-emerald-600 hover:text-emerald-700 transition"
+   397→   397→                      title="View details"
+   398→   398→                    >
+   399→   399→                      <Eye className="w-4 h-4" />
+   400→   400→                    </button>
+   401→   401→                  </td>
+   402→   402→                </tr>
+   403→   403→              ))}
+   404→   404→              {recentLeads.length === 0 && (
+   405→   405→                <tr>
+   406→   406→                  <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-400">
+   407→   407→                    No leads yet
+   408→   408→                  </td>
+   409→   409→                </tr>
+   410→   410→              )}
+   411→   411→            </tbody>
+   412→   412→          </table>
+   413→   413→        </div>
+   414→   414→      </div>
+   415→   415→    </motion.div>
+   416→   416→  );
+   417→   417→}
+   418→   418→
+   419→   419→// ─── LEADS TAB ─────────────────────────────────────────────────────────────────
+   420→   420→
+   421→   421→function LeadsTab({
+   422→   422→  leads,
+   423→   423→  onViewLead,
+   424→   424→  onStatusChange,
+   425→   425→  isLoading,
+   426→   426→  searchQuery,
+   427→   427→  setSearchQuery,
+   428→   428→  statusFilter,
+   429→   429→  setStatusFilter,
+   430→   430→}: {
+   431→   431→  leads: Lead[];
+   432→   432→  onViewLead: (lead: Lead) => void;
+   433→   433→  onStatusChange: (id: number, status: string) => void;
+   434→   434→  isLoading: boolean;
+   435→   435→  searchQuery: string;
+   436→   436→  setSearchQuery: (q: string) => void;
+   437→   437→  statusFilter: StatusFilter;
+   438→   438→  setStatusFilter: (f: StatusFilter) => void;
+   439→   439→}) {
+   440→   440→  const [visibleCount, setVisibleCount] = useState(20);
+   441→   441→  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+   442→   442→
+   443→   443→  const filteredLeads = leads
+   444→   444→    .filter((l) => {
+   445→   445→      const matchSearch =
+   446→   446→        !searchQuery ||
+   447→   447→        l.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+   448→   448→        l.phone.includes(searchQuery) ||
+   449→   449→        l.city.toLowerCase().includes(searchQuery.toLowerCase());
+   450→   450→      const matchStatus = statusFilter === 'all' || l.status === statusFilter;
+   451→   451→      return matchSearch && matchStatus;
+   452→   452→    })
+   453→   453→    .sort((a, b) => {
+   454→   454→      const dateA = new Date(a.createdAt).getTime();
+   455→   455→      const dateB = new Date(b.createdAt).getTime();
+   456→   456→      return sortDir === 'desc' ? dateB - dateA : dateA - dateB;
+   457→   457→    });
+   458→   458→
+   459→   459→  const displayedLeads = filteredLeads.slice(0, visibleCount);
+   460→   460→  const hasMore = visibleCount < filteredLeads.length;
+   461→   461→
+   462→   462→  const handleExport = async () => {
+   463→   463→    try {
+   464→   464→      const res = await fetch('/api/leads/export');
+   465→   465→      if (!res.ok) throw new Error('Export failed');
+   466→   466→      const blob = await res.blob();
+   467→   467→      const url = URL.createObjectURL(blob);
+   468→   468→      const a = document.createElement('a');
+   469→   469→      a.href = url;
+   470→   470→      a.download = `leads-export-${new Date().toISOString().split('T')[0]}.csv`;
+   471→   471→      document.body.appendChild(a);
+   472→   472→      a.click();
+   473→   473→      document.body.removeChild(a);
+   474→   474→      URL.revokeObjectURL(url);
+   475→   475→    } catch {
+   476→   476→      alert('Failed to export leads. Please try again.');
+   477→   477→    }
+   478→   478→  };
+   479→   479→
+   480→   480→  if (isLoading) {
+   481→   481→    return (
+   482→   482→      <div className="flex items-center justify-center py-20">
+   483→   483→        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+   484→   484→      </div>
+   485→   485→    );
+   486→   486→  }
+   487→   487→
+   488→   488→  return (
+   489→   489→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+   490→   490→      {/* Controls */}
+   491→   491→      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+   492→   492→        <div className="flex flex-col sm:flex-row gap-3 flex-1 w-full sm:w-auto">
+   493→   493→          {/* Search */}
+   494→   494→          <div className="relative flex-1 max-w-md">
+   495→   495→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+   496→   496→            <input
+   497→   497→              type="text"
+   498→   498→              value={searchQuery}
+   499→   499→              onChange={(e) => setSearchQuery(e.target.value)}
+   500→   500→              placeholder="Search leads..."
+   501→   501→              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   502→   502→            />
+   503→   503→            {searchQuery && (
+   504→   504→              <button
+   505→   505→                onClick={() => setSearchQuery('')}
+   506→   506→                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+   507→   507→              >
+   508→   508→                <X className="w-4 h-4" />
+   509→   509→              </button>
+   510→   510→            )}
+   511→   511→          </div>
+   512→   512→          {/* Status Filter */}
+   513→   513→          <div className="relative">
+   514→   514→            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+   515→   515→            <select
+   516→   516→              value={statusFilter}
+   517→   517→              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+   518→   518→              className="pl-10 pr-8 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition appearance-none cursor-pointer"
+   519→   519→            >
+   520→   520→              {STATUS_OPTIONS.map((opt) => (
+   521→   521→                <option key={opt.value} value={opt.value}>
+   522→   522→                  {opt.label}
+   523→   523→                </option>
+   524→   524→              ))}
+   525→   525→            </select>
+   526→   526→          </div>
+   527→   527→        </div>
+   528→   528→        <div className="flex gap-2 items-center">
+   529→   529→          <button
+   530→   530→            onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+   531→   531→            className="flex items-center gap-1.5 px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition"
+   532→   532→            title="Toggle sort"
+   533→   533→          >
+   534→   534→            <ArrowUpDown className="w-4 h-4" />
+   535→   535→            {sortDir === 'desc' ? 'Newest' : 'Oldest'}
+   536→   536→          </button>
+   537→   537→          <button
+   538→   538→            onClick={handleExport}
+   539→   539→            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition"
+   540→   540→          >
+   541→   541→            <Download className="w-4 h-4" />
+   542→   542→            Export
+   543→   543→          </button>
+   544→   544→        </div>
+   545→   545→      </div>
+   546→   546→
+   547→   547→      {/* Results count */}
+   548→   548→      <p className="text-sm text-slate-500">
+   549→   549→        Showing {displayedLeads.length} of {filteredLeads.length} leads
+   550→   550→      </p>
+   551→   551→
+   552→   552→      {/* Table */}
+   553→   553→      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+   554→   554→        <div className="overflow-x-auto">
+   555→   555→          <table className="admin-table w-full">
+   556→   556→            <thead>
+   557→   557→              <tr className="border-b border-slate-200 bg-slate-50">
+   558→   558→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider w-10">#</th>
+   559→   559→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
+   560→   560→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Phone</th>
+   561→   561→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">City</th>
+   562→   562→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">State</th>
+   563→   563→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Investment</th>
+   564→   564→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+   565→   565→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+   566→   566→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+   567→   567→              </tr>
+   568→   568→            </thead>
+   569→   569→            <tbody className="divide-y divide-slate-100">
+   570→   570→              {displayedLeads.map((lead, idx) => (
+   571→   571→                <tr key={lead.id} className="hover:bg-slate-50 transition">
+   572→   572→                  <td className="px-4 py-3 text-sm text-slate-400">{idx + 1}</td>
+   573→   573→                  <td className="px-4 py-3 text-sm font-medium text-slate-900">{lead.fullName}</td>
+   574→   574→                  <td className="px-4 py-3 text-sm text-slate-600">{lead.phone}</td>
+   575→   575→                  <td className="px-4 py-3 text-sm text-slate-600">{lead.city}</td>
+   576→   576→                  <td className="px-4 py-3 text-sm text-slate-600">{lead.state}</td>
+   577→   577→                  <td className="px-4 py-3 text-sm text-slate-600">{lead.investmentCapacity}</td>
+   578→   578→                  <td className="px-4 py-3">
+   579→   579→                    <StatusBadge status={lead.status} />
+   580→   580→                  </td>
+   581→   581→                  <td className="px-4 py-3 text-sm text-slate-500">{lead.createdAt?.split('T')[0] ?? '—'}</td>
+   582→   582→                  <td className="px-4 py-3">
+   583→   583→                    <div className="flex items-center gap-2">
+   584→   584→                      <button
+   585→   585→                        onClick={() => onViewLead(lead)}
+   586→   586→                        className="text-emerald-600 hover:text-emerald-700 transition p-1 rounded hover:bg-emerald-50"
+   587→   587→                        title="View details"
+   588→   588→                      >
+   589→   589→                        <Eye className="w-4 h-4" />
+   590→   590→                      </button>
+   591→   591→                      <select
+   592→   592→                        value={lead.status}
+   593→   593→                        onChange={(e) => onStatusChange(lead.id, e.target.value)}
+   594→   594→                        className="text-xs border border-slate-300 rounded px-1.5 py-1 bg-white text-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+   595→   595→                        title="Change status"
+   596→   596→                      >
+   597→   597→                        {STATUS_CHANGE_OPTIONS.map((opt) => (
+   598→   598→                          <option key={opt.value} value={opt.value}>
+   599→   599→                            {opt.label}
+   600→   600→                          </option>
+   601→   601→                        ))}
+   602→   602→                      </select>
+   603→   603→                    </div>
+   604→   604→                  </td>
+   605→   605→                </tr>
+   606→   606→              ))}
+   607→   607→              {displayedLeads.length === 0 && (
+   608→   608→                <tr>
+   609→   609→                  <td colSpan={9} className="px-4 py-12 text-center text-sm text-slate-400">
+   610→   610→                    {searchQuery || statusFilter !== 'all' ? 'No leads match your filters' : 'No leads yet'}
+   611→   611→                  </td>
+   612→   612→                </tr>
+   613→   613→              )}
+   614→   614→            </tbody>
+   615→   615→          </table>
+   616→   616→        </div>
+   617→   617→      </div>
+   618→   618→
+   619→   619→      {/* Show More */}
+   620→   620→      {hasMore && (
+   621→   621→        <div className="flex justify-center">
+   622→   622→          <button
+   623→   623→            onClick={() => setVisibleCount((c) => c + 20)}
+   624→   624→            className="px-6 py-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
+   625→   625→          >
+   626→   626→            Show More ({filteredLeads.length - visibleCount} remaining)
+   627→   627→          </button>
+   628→   628→        </div>
+   629→   629→      )}
+   630→   630→    </motion.div>
+   631→   631→  );
+   632→   632→}
+   633→   633→
+   634→   634→// ─── LEAD DETAIL VIEW ──────────────────────────────────────────────────────────
+   635→   635→
+   636→   636→function LeadDetailView({
+   637→   637→  lead,
+   638→   638→  onBack,
+   639→   639→}: {
+   640→   640→  lead: Lead;
+   641→   641→  onBack: () => void;
+   642→   642→}) {
+   643→   643→  const [status, setStatus] = useState(lead.status);
+   644→   644→  const [adminNotes, setAdminNotes] = useState(lead.adminNotes || '');
+   645→   645→  const [saving, setSaving] = useState(false);
+   646→   646→  const [saved, setSaved] = useState(false);
+   647→   647→
+   648→   648→  const handleSave = async () => {
+   649→   649→    setSaving(true);
+   650→   650→    setSaved(false);
+   651→   651→    try {
+   652→   652→      await fetch(`/api/leads/${lead.id}`, {
+   653→   653→        method: 'PATCH',
+   654→   654→        headers: { 'Content-Type': 'application/json' },
+   655→   655→        body: JSON.stringify({ adminNotes, status }),
+   656→   656→      });
+   657→   657→      setSaved(true);
+   658→   658→      setTimeout(() => setSaved(false), 2000);
+   659→   659→    } catch {
+   660→   660→      alert('Failed to save changes');
+   661→   661→    } finally {
+   662→   662→      setSaving(false);
+   663→   663→    }
+   664→   664→  };
+   665→   665→
+   666→   666→  const infoRow = (label: string, value?: string | null, icon?: React.ReactNode) => (
+   667→   667→    <div className="flex items-start gap-3 py-2">
+   668→   668→      {icon && <span className="text-slate-400 mt-0.5 shrink-0">{icon}</span>}
+   669→   669→      <div className="min-w-0">
+   670→   670→        <p className="text-xs text-slate-400 uppercase tracking-wide">{label}</p>
+   671→   671→        <p className="text-sm text-slate-900 mt-0.5 break-words">{value || '—'}</p>
+   672→   672→      </div>
+   673→   673→    </div>
+   674→   674→  );
+   675→   675→
+   676→   676→  return (
+   677→   677→    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+   678→   678→      {/* Back button */}
+   679→   679→      <button
+   680→   680→        onClick={onBack}
+   681→   681→        className="flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition"
+   682→   682→      >
+   683→   683→        <ChevronLeft className="w-4 h-4" />
+   684→   684→        Back to Leads
+   685→   685→      </button>
+   686→   686→
+   687→   687→      {/* Header */}
+   688→   688→      <div className="bg-white border border-slate-200 rounded-xl p-6">
+   689→   689→        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   690→   690→          <div>
+   691→   691→            <h2 className="text-xl font-bold text-slate-900">{lead.fullName}</h2>
+   692→   692→            <p className="text-sm text-slate-500 mt-1">
+   693→   693→              Applied on {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
+   694→   694→            </p>
+   695→   695→          </div>
+   696→   696→          <StatusBadge status={status} />
+   697→   697→        </div>
+   698→   698→      </div>
+   699→   699→
+   700→   700→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   701→   701→        {/* Personal Information */}
+   702→   702→        <div className="premium-card bg-white border border-slate-200 rounded-xl p-6">
+   703→   703→          <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Personal Information</h3>
+   704→   704→          <div className="divide-y divide-slate-100">
+   705→   705→            {infoRow('Full Name', lead.fullName, <Users className="w-4 h-4" />)}
+   706→   706→            {infoRow('Phone', lead.phone, <Phone className="w-4 h-4" />)}
+   707→   707→            {infoRow('WhatsApp', lead.whatsapp, <Phone className="w-4 h-4" />)}
+   708→   708→            {infoRow('Email', lead.email, <Mail className="w-4 h-4" />)}
+   709→   709→            {infoRow('Date of Birth', lead.dob, <Calendar className="w-4 h-4" />)}
+   710→   710→            {infoRow('Education', lead.education)}
+   711→   711→            {infoRow('Occupation', lead.occupation)}
+   712→   712→          </div>
+   713→   713→        </div>
+   714→   714→
+   715→   715→        {/* Business Information */}
+   716→   716→        <div className="premium-card bg-white border border-slate-200 rounded-xl p-6">
+   717→   717→          <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Business Information</h3>
+   718→   718→          <div className="divide-y divide-slate-100">
+   719→   719→            {infoRow('Address', lead.address, <MapPin className="w-4 h-4" />)}
+   720→   720→            {infoRow('City', lead.city)}
+   721→   721→            {infoRow('State', lead.state)}
+   722→   722→            {infoRow('PIN Code', lead.pinCode)}
+   723→   723→            {infoRow('Business Experience', lead.businessExperience)}
+   724→   724→            {infoRow('Investment Capacity', lead.investmentCapacity)}
+   725→   725→            {infoRow('Land Size', lead.landSize)}
+   726→   726→            {infoRow('Preferred Location', lead.preferredLocation)}
+   727→   727→            {infoRow('Timeline', lead.timeline)}
+   728→   728→          </div>
+   729→   729→        </div>
+   730→   730→      </div>
+   731→   731→
+   732→   732→      {/* Admin Section */}
+   733→   733→      <div className="premium-card bg-white border border-slate-200 rounded-xl p-6">
+   734→   734→        <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Admin</h3>
+   735→   735→        <div className="space-y-4">
+   736→   736→          <div>
+   737→   737→            <label className="block text-sm font-medium text-slate-700 mb-1.5">Status</label>
+   738→   738→            <select
+   739→   739→              value={status}
+   740→   740→              onChange={(e) => setStatus(e.target.value)}
+   741→   741→              className="w-full max-w-xs px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   742→   742→            >
+   743→   743→              {STATUS_CHANGE_OPTIONS.map((opt) => (
+   744→   744→                <option key={opt.value} value={opt.value}>
+   745→   745→                  {opt.label}
+   746→   746→                </option>
+   747→   747→              ))}
+   748→   748→            </select>
+   749→   749→          </div>
+   750→   750→          <div>
+   751→   751→            <label className="block text-sm font-medium text-slate-700 mb-1.5">Admin Notes</label>
+   752→   752→            <textarea
+   753→   753→              value={adminNotes}
+   754→   754→              onChange={(e) => setAdminNotes(e.target.value)}
+   755→   755→              rows={4}
+   756→   756→              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition resize-y"
+   757→   757→              placeholder="Add notes about this lead..."
+   758→   758→            />
+   759→   759→          </div>
+   760→   760→          <div className="flex items-center gap-3">
+   761→   761→            <button
+   762→   762→              onClick={handleSave}
+   763→   763→              disabled={saving}
+   764→   764→              className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition flex items-center gap-2 disabled:opacity-60"
+   765→   765→            >
+   766→   766→              {saving ? (
+   767→   767→                <>
+   768→   768→                  <Loader2 className="w-4 h-4 animate-spin" />
+   769→   769→                  Saving...
+   770→   770→                </>
+   771→   771→              ) : saved ? (
+   772→   772→                <>
+   773→   773→                  <CheckCircle2 className="w-4 h-4" />
+   774→   774→                  Saved!
+   775→   775→                </>
+   776→   776→              ) : (
+   777→   777→                'Save Changes'
+   778→   778→              )}
+   779→   779→            </button>
+   780→   780→          </div>
+   781→   781→          <p className="text-xs text-slate-400">
+   782→   782→            Created: {lead.createdAt ? new Date(lead.createdAt).toLocaleString('en-IN') : '—'}
+   783→   783→          </p>
+   784→   784→        </div>
+   785→   785→      </div>
+   786→   786→    </motion.div>
+   787→   787→  );
+   788→   788→}
+   789→   789→
+   790→   790→// ─── GALLERY TAB ───────────────────────────────────────────────────────────────
+   791→   791→
+   792→   792→function GalleryTab({ images, onDelete }: { images: GalleryImage[]; onDelete: (id: number) => void }) {
+   793→   793→  const [categoryFilter, setCategoryFilter] = useState<GalleryCategory>('all');
+   794→   794→
+   795→   795→  const filtered = categoryFilter === 'all' ? images : images.filter((img) => img.category === categoryFilter);
+   796→   796→
+   797→   797→  const handleUpload = () => {
+   798→   798→    alert('Gallery upload requires admin setup');
+   799→   799→  };
+   800→   800→
+   801→   801→  return (
+   802→   802→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+   803→   803→      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+   804→   804→        <div className="flex gap-2 flex-wrap">
+   805→   805→          {GALLERY_CATEGORIES.map((cat) => (
+   806→   806→            <button
+   807→   807→              key={cat.value}
+   808→   808→              onClick={() => setCategoryFilter(cat.value)}
+   809→   809→              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+   810→   810→                categoryFilter === cat.value
+   811→   811→                  ? 'bg-emerald-600 text-white'
+   812→   812→                  : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'
+   813→   813→              }`}
+   814→   814→            >
+   815→   815→              {cat.label}
+   816→   816→            </button>
+   817→   817→          ))}
+   818→   818→        </div>
+   819→   819→        <button
+   820→   820→          onClick={handleUpload}
+   821→   821→          className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition"
+   822→   822→        >
+   823→   823→          <Image className="w-4 h-4" />
+   824→   824→          Upload Image
+   825→   825→        </button>
+   826→   826→      </div>
+   827→   827→
+   828→   828→      {filtered.length === 0 ? (
+   829→   829→        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+   830→   830→          <Image className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+   831→   831→          <p className="text-sm text-slate-400">No images in this category</p>
+   832→   832→        </div>
+   833→   833→      ) : (
+   834→   834→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+   835→   835→          {filtered.map((img) => (
+   836→   836→            <div key={img.id} className="premium-card bg-white border border-slate-200 rounded-xl overflow-hidden group">
+   837→   837→              <div className="aspect-video bg-slate-100 relative overflow-hidden">
+   838→   838→                {img.imageUrl ? (
+   839→   839→                  <img
+   840→   840→                    src={img.imageUrl}
+   841→   841→                    alt={img.title}
+   842→   842→                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+   843→   843→                  />
+   844→   844→                ) : (
+   845→   845→                  <div className="w-full h-full flex items-center justify-center">
+   846→   846→                    <Image className="w-8 h-8 text-slate-300" />
+   847→   847→                  </div>
+   848→   848→                )}
+   849→   849→                <button
+   850→   850→                  onClick={() => onDelete(img.id)}
+   851→   851→                  className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+   852→   852→                  title="Delete"
+   853→   853→                >
+   854→   854→                  <Trash2 className="w-3.5 h-3.5" />
+   855→   855→                </button>
+   856→   856→              </div>
+   857→   857→              <div className="p-3">
+   858→   858→                <p className="text-sm font-medium text-slate-900 truncate">{img.title}</p>
+   859→   859→                <span className="inline-block mt-1 px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full">
+   860→   860→                  {img.category}
+   861→   861→                </span>
+   862→   862→              </div>
+   863→   863→            </div>
+   864→   864→          ))}
+   865→   865→        </div>
+   866→   866→      )}
+   867→   867→    </motion.div>
+   868→   868→  );
+   869→   869→}
+   870→   870→
+   871→   871→// ─── SETTINGS TAB ──────────────────────────────────────────────────────────────
+   872→   872→
+   873→   873→function SettingsTab() {
+   874→   874→  const [oldPassword, setOldPassword] = useState('');
+   875→   875→  const [newPassword, setNewPassword] = useState('');
+   876→   876→  const [confirmPassword, setConfirmPassword] = useState('');
+   877→   877→  const [saving, setSaving] = useState(false);
+   878→   878→  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+   879→   879→
+   880→   880→  const handleChangePassword = async (e: React.FormEvent) => {
+   881→   881→    e.preventDefault();
+   882→   882→    if (newPassword !== confirmPassword) {
+   883→   883→      setMessage({ type: 'error', text: 'Passwords do not match' });
+   884→   884→      return;
+   885→   885→    }
+   886→   886→    if (newPassword.length < 6) {
+   887→   887→      setMessage({ type: 'error', text: 'Password must be at least 6 characters' });
+   888→   888→      return;
+   889→   889→    }
+   890→   890→    setSaving(true);
+   891→   891→    setMessage(null);
+   892→   892→    try {
+   893→   893→      const res = await fetch('/api/auth/change-password', {
+   894→   894→        method: 'POST',
+   895→   895→        headers: { 'Content-Type': 'application/json' },
+   896→   896→        body: JSON.stringify({ oldPassword, newPassword }),
+   897→   897→      });
+   898→   898→      const data = await res.json();
+   899→   899→      if (data.success) {
+   900→   900→        setMessage({ type: 'success', text: 'Password changed successfully' });
+   901→   901→        setOldPassword('');
+   902→   902→        setNewPassword('');
+   903→   903→        setConfirmPassword('');
+   904→   904→      } else {
+   905→   905→        setMessage({ type: 'error', text: data.message || 'Failed to change password' });
+   906→   906→      }
+   907→   907→    } catch {
+   908→   908→      setMessage({ type: 'error', text: 'Something went wrong' });
+   909→   909→    } finally {
+   910→   910→      setSaving(false);
+   911→   911→    }
+   912→   912→  };
+   913→   913→
+   914→   914→  return (
+   915→   915→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 max-w-xl">
+   916→   916→      {/* Admin Settings */}
+   917→   917→      <div className="premium-card bg-white border border-slate-200 rounded-xl p-6">
+   918→   918→        <h3 className="text-lg font-semibold text-slate-900 mb-4">Admin Settings</h3>
+   919→   919→        <div className="space-y-4">
+   920→   920→          <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+   921→   921→            <p className="text-sm text-slate-600">Manage your admin account settings and preferences.</p>
+   922→   922→            <p className="text-xs text-slate-400 mt-1">Additional settings will be available in future updates.</p>
+   923→   923→          </div>
+   924→   924→          <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+   925→   925→            <p className="text-sm font-medium text-slate-700">Notification Preferences</p>
+   926→   926→            <p className="text-xs text-slate-400 mt-1">Configure how and when you receive lead notifications.</p>
+   927→   927→          </div>
+   928→   928→        </div>
+   929→   929→      </div>
+   930→   930→
+   931→   931→      {/* Change Password */}
+   932→   932→      <div className="premium-card bg-white border border-slate-200 rounded-xl p-6">
+   933→   933→        <h3 className="text-lg font-semibold text-slate-900 mb-4">Change Password</h3>
+   934→   934→        {message && (
+   935→   935→          <motion.div
+   936→   936→            initial={{ opacity: 0, y: -5 }}
+   937→   937→            animate={{ opacity: 1, y: 0 }}
+   938→   938→            className={`flex items-center gap-2 text-sm px-4 py-3 rounded-lg mb-4 ${
+   939→   939→              message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+   940→   940→            }`}
+   941→   941→          >
+   942→   942→            {message.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+   943→   943→            {message.text}
+   944→   944→          </motion.div>
+   945→   945→        )}
+   946→   946→        <form onSubmit={handleChangePassword} className="space-y-4">
+   947→   947→          <div>
+   948→   948→            <label className="block text-sm font-medium text-slate-700 mb-1.5">Current Password</label>
+   949→   949→            <input
+   950→   950→              type="password"
+   951→   951→              value={oldPassword}
+   952→   952→              onChange={(e) => setOldPassword(e.target.value)}
+   953→   953→              className="form-input w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   954→   954→              required
+   955→   955→            />
+   956→   956→          </div>
+   957→   957→          <div>
+   958→   958→            <label className="block text-sm font-medium text-slate-700 mb-1.5">New Password</label>
+   959→   959→            <input
+   960→   960→              type="password"
+   961→   961→              value={newPassword}
+   962→   962→              onChange={(e) => setNewPassword(e.target.value)}
+   963→   963→              className="form-input w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   964→   964→              required
+   965→   965→            />
+   966→   966→          </div>
+   967→   967→          <div>
+   968→   968→            <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirm New Password</label>
+   969→   969→            <input
+   970→   970→              type="password"
+   971→   971→              value={confirmPassword}
+   972→   972→              onChange={(e) => setConfirmPassword(e.target.value)}
+   973→   973→              className="form-input w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   974→   974→              required
+   975→   975→            />
+   976→   976→          </div>
+   977→   977→          <button
+   978→   978→            type="submit"
+   979→   979→            disabled={saving}
+   980→   980→            className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition flex items-center gap-2 disabled:opacity-60"
+   981→   981→          >
+   982→   982→            {saving ? (
+   983→   983→              <>
+   984→   984→                <Loader2 className="w-4 h-4 animate-spin" />
+   985→   985→                Changing...
+   986→   986→              </>
+   987→   987→            ) : (
+   988→   988→              'Change Password'
+   989→   989→            )}
+   990→   990→          </button>
+   991→   991→        </form>
+   992→   992→      </div>
+   993→   993→    </motion.div>
+   994→   994→  );
+   995→   995→}
+   996→   996→
+   997→   997→// ─── MAIN ADMIN PANEL ──────────────────────────────────────────────────────────
+   998→   998→
+   999→   999→export function AdminPanel() {
+  1000→  1000→  const { adminAuthenticated, adminName, setAdminAuthenticated } = useAppStore();
+  1001→  1001→
+  1002→  1002→  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  1003→  1003→  const [leads, setLeads] = useState<Lead[]>([]);
+  1004→  1004→  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  1005→  1005→  const [isLoading, setIsLoading] = useState(true);
+  1006→  1006→  const [searchQuery, setSearchQuery] = useState('');
+  1007→  1007→  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  1008→  1008→  const [stats, setStats] = useState<DashboardStats | null>(null);
+  1009→  1009→  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  1010→  1010→
+  1011→  1011→  const fetchDashboardData = useCallback(async () => {
+  1012→  1012→    setIsLoading(true);
+  1013→  1013→    try {
+  1014→  1014→      const [leadsRes, dashRes, galleryRes] = await Promise.allSettled([
+  1015→  1015→        fetch('/api/leads'),
+  1016→  1016→        fetch('/api/admin/dashboard'),
+  1017→  1017→        fetch('/api/gallery'),
+  1018→  1018→      ]);
+  1019→  1019→
+  1020→  1020→      if (leadsRes.status === 'fulfilled' && leadsRes.value.ok) {
+  1021→  1021→        const data = safeData(await leadsRes.value.json());
+  1022→  1022→        setLeads(Array.isArray(data) ? data : data.leads ?? []);
+  1023→  1023→      }
+  1024→  1024→
+  1025→  1025→      if (dashRes.status === 'fulfilled' && dashRes.value.ok) {
+  1026→  1026→        setStats(safeData(await dashRes.value.json()));
+  1027→  1027→      }
+  1028→  1028→
+  1029→  1029→      if (galleryRes.status === 'fulfilled' && galleryRes.value.ok) {
+  1030→  1030→        const data = safeData(await galleryRes.value.json());
+  1031→  1031→        setGalleryImages(Array.isArray(data) ? data : data.images ?? []);
+  1032→  1032→      }
+  1033→  1033→    } catch {
+  1034→  1034→      // Silently handle fetch errors
+  1035→  1035→    } finally {
+  1036→  1036→      setIsLoading(false);
+  1037→  1037→    }
+  1038→  1038→  }, []);
+  1039→  1039→
+  1040→  1040→  useEffect(() => {
+  1041→  1041→    if (adminAuthenticated) {
+  1042→  1042→      fetchDashboardData();
+  1043→  1043→    }
+  1044→  1044→  }, [adminAuthenticated, fetchDashboardData]);
+  1045→  1045→
+  1046→  1046→  const handleLogout = () => {
+  1047→  1047→    setAdminAuthenticated(false);
+  1048→  1048→    setSelectedLead(null);
+  1049→  1049→    setActiveTab('dashboard');
+  1050→  1050→    setSearchQuery('');
+  1051→  1051→    setStatusFilter('all');
+  1052→  1052→  };
+  1053→  1053→
+  1054→  1054→  const handleStatusChange = async (id: number, status: string) => {
+  1055→  1055→    try {
+  1056→  1056→      await fetch(`/api/leads/${id}`, {
+  1057→  1057→        method: 'PATCH',
+  1058→  1058→        headers: { 'Content-Type': 'application/json' },
+  1059→  1059→        body: JSON.stringify({ status }),
+  1060→  1060→      });
+  1061→  1061→      setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
+  1062→  1062→    } catch {
+  1063→  1063→      alert('Failed to update status');
+  1064→  1064→    }
+  1065→  1065→  };
+  1066→  1066→
+  1067→  1067→  const handleDeleteImage = async (id: number) => {
+  1068→  1068→    if (!confirm('Are you sure you want to delete this image?')) return;
+  1069→  1069→    try {
+  1070→  1070→      await fetch(`/api/gallery/${id}`, { method: 'DELETE' });
+  1071→  1071→      setGalleryImages((prev) => prev.filter((img) => img.id !== id));
+  1072→  1072→    } catch {
+  1073→  1073→      alert('Failed to delete image');
+  1074→  1074→    }
+  1075→  1075→  };
+  1076→  1076→
+  1077→  1077→  // ─── LOGIN VIEW
+  1078→  1078→  if (!adminAuthenticated) {
+  1079→  1079→    return <LoginView />;
+  1080→  1080→  }
+  1081→  1081→
+  1082→  1082→  // ─── LEAD DETAIL VIEW
+  1083→  1083→  if (selectedLead) {
+  1084→  1084→    return (
+  1085→  1085→      <div className="w-full min-h-screen bg-gray-50">
+  1086→  1086→        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+  1087→  1087→          <LeadDetailView
+  1088→  1088→            lead={selectedLead}
+  1089→  1089→            onBack={() => setSelectedLead(null)}
+  1090→  1090→          />
+  1091→  1091→        </div>
+  1092→  1092→      </div>
+  1093→  1093→    );
+  1094→  1094→  }
+  1095→  1095→
+  1096→  1096→  // ─── DASHBOARD VIEW
+  1097→  1097→  return (
+  1098→  1098→    <div className="w-full min-h-screen bg-gray-50">
+  1099→  1099→      {/* Top Bar */}
+  1100→  1100→      <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-10">
+  1101→  1101→        <div className="flex items-center gap-3">
+  1102→  1102→          <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
+  1103→  1103→            <span className="text-white text-xs font-bold">DF</span>
+  1104→  1104→          </div>
+  1105→  1105→          <div>
+  1106→  1106→            <p className="text-lg font-bold text-slate-900 leading-tight">DF Admin</p>
+  1107→  1107→            <p className="text-xs text-slate-400 leading-tight">Dashboard</p>
+  1108→  1108→          </div>
+  1109→  1109→        </div>
+  1110→  1110→        <div className="flex items-center gap-4">
+  1111→  1111→          <span className="text-sm text-slate-600 hidden sm:block">Welcome, {adminName || 'Admin'}</span>
+  1112→  1112→          <button
+  1113→  1113→            onClick={handleLogout}
+  1114→  1114→            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-500 transition"
+  1115→  1115→          >
+  1116→  1116→            <LogOut className="w-4 h-4" />
+  1117→  1117→            <span className="hidden sm:inline">Logout</span>
+  1118→  1118→          </button>
+  1119→  1119→        </div>
+  1120→  1120→      </header>
+  1121→  1121→
+  1122→  1122→      {/* Tab Bar */}
+  1123→  1123→      <nav className="bg-white border-b border-slate-200">
+  1124→  1124→        <div className="max-w-7xl mx-auto px-6">
+  1125→  1125→          <div className="flex gap-0 -mb-px overflow-x-auto">
+  1126→  1126→            {TAB_CONFIG.map((tab) => (
+  1127→  1127→              <button
+  1128→  1128→                key={tab.id}
+  1129→  1129→                onClick={() => setActiveTab(tab.id)}
+  1130→  1130→                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+  1131→  1131→                  activeTab === tab.id
+  1132→  1132→                    ? 'text-emerald-600 border-emerald-600'
+  1133→  1133→                    : 'text-slate-500 border-transparent hover:text-slate-700 hover:border-slate-300'
+  1134→  1134→                }`}
+  1135→  1135→              >
+  1136→  1136→                {tab.icon}
+  1137→  1137→                {tab.label}
+  1138→  1138→              </button>
+  1139→  1139→            ))}
+  1140→  1140→          </div>
+  1141→  1141→        </div>
+  1142→  1142→      </nav>
+  1143→  1143→
+  1144→  1144→      {/* Tab Content */}
+  1145→  1145→      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+  1146→  1146→        <AnimatePresence mode="wait">
+  1147→  1147→          {activeTab === 'dashboard' && (
+  1148→  1148→            <OverviewTab
+  1149→  1149→              key="overview"
+  1150→  1150→              stats={stats}
+  1151→  1151→              leads={leads}
+  1152→  1152→              onViewLead={(lead) => {
+  1153→  1153→                setSelectedLead(lead);
+  1154→  1154→                setActiveTab('leads');
+  1155→  1155→              }}
+  1156→  1156→              isLoading={isLoading}
+  1157→  1157→            />
+  1158→  1158→          )}
+  1159→  1159→          {activeTab === 'leads' && (
+  1160→  1160→            <LeadsTab
+  1161→  1161→              key="leads"
+  1162→  1162→              leads={leads}
+  1163→  1163→              onViewLead={setSelectedLead}
+  1164→  1164→              onStatusChange={handleStatusChange}
+  1165→  1165→              isLoading={isLoading}
+  1166→  1166→              searchQuery={searchQuery}
+  1167→  1167→              setSearchQuery={setSearchQuery}
+  1168→  1168→              statusFilter={statusFilter}
+  1169→  1169→              setStatusFilter={setStatusFilter}
+  1170→  1170→            />
+  1171→  1171→          )}
+  1172→  1172→          {activeTab === 'gallery' && (
+  1173→  1173→            <GalleryTab key="gallery" images={galleryImages} onDelete={handleDeleteImage} />
+  1174→  1174→          )}
+  1175→  1175→          {activeTab === 'settings' && <SettingsTab key="settings" />}
+  1176→  1176→        </AnimatePresence>
+  1177→  1177→      </main>
+  1178→  1178→    </div>
+  1179→  1179→  );
+  1180→  1180→}

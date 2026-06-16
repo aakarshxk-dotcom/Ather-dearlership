@@ -1,0 +1,1180 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import { useAppStore } from '@/store/app';
+     6→import {
+     7→  Users,
+     8→  UserCheck,
+     9→  UserX,
+    10→  Clock,
+    11→  FileText,
+    12→  BarChart3,
+    13→  Image,
+    14→  LogOut,
+    15→  Eye,
+    16→  Trash2,
+    17→  Download,
+    18→  Search,
+    19→  ChevronLeft,
+    20→  Mail,
+    21→  Phone,
+    22→  MapPin,
+    23→  Calendar,
+    24→  ArrowUpDown,
+    25→  Filter,
+    26→  X,
+    27→  CheckCircle2,
+    28→  AlertCircle,
+    29→  Loader2,
+    30→} from 'lucide-react';
+    31→
+    32→function safeData(data: unknown) {
+    33→  return JSON.parse(JSON.stringify(data, (_, v) => (typeof v === 'bigint' ? Number(v) : v)));
+    34→}
+    35→
+    36→type TabId = 'dashboard' | 'leads' | 'gallery' | 'settings';
+    37→type StatusFilter = 'all' | 'new' | 'reviewing' | 'shortlisted' | 'approved' | 'rejected' | 'on_hold';
+    38→type GalleryCategory = 'all' | 'Showroom' | 'Interior' | 'Exterior' | 'Events' | 'Team';
+    39→
+    40→interface Lead {
+    41→  id: number;
+    42→  fullName: string;
+    43→  phone: string;
+    44→  whatsapp?: string;
+    45→  email?: string;
+    46→  dob?: string;
+    47→  education?: string;
+    48→  occupation?: string;
+    49→  address?: string;
+    50→  city: string;
+    51→  state: string;
+    52→  pinCode?: string;
+    53→  businessExperience?: string;
+    54→  investmentCapacity: string;
+    55→  landSize?: string;
+    56→  preferredLocation?: string;
+    57→  timeline?: string;
+    58→  status: string;
+    59→  adminNotes?: string;
+    60→  createdAt: string;
+    61→}
+    62→
+    63→interface DashboardStats {
+    64→  totalLeads: number;
+    65→  newLeads: number;
+    66→  approvedLeads: number;
+    67→  rejectedLeads: number;
+    68→  leadsThisWeek: number;
+    69→  conversionRate: string;
+    70→  avgInvestment: string;
+    71→}
+    72→
+    73→interface GalleryImage {
+    74→  id: number;
+    75→  title: string;
+    76→  category: string;
+    77→  imageUrl: string;
+    78→}
+    79→
+    80→const STATUS_BADGES: Record<string, { label: string; className: string }> = {
+    81→  new: { label: 'New', className: 'bg-blue-100 text-blue-700' },
+    82→  reviewing: { label: 'Reviewing', className: 'bg-amber-100 text-amber-700' },
+    83→  shortlisted: { label: 'Shortlisted', className: 'bg-purple-100 text-purple-700' },
+    84→  approved: { label: 'Approved', className: 'bg-green-100 text-green-700' },
+    85→  rejected: { label: 'Rejected', className: 'bg-red-100 text-red-700' },
+    86→  on_hold: { label: 'On Hold', className: 'bg-gray-100 text-gray-600' },
+    87→};
+    88→
+    89→const TAB_CONFIG: { id: TabId; label: string; icon: React.ReactNode }[] = [
+    90→  { id: 'dashboard', label: 'Overview', icon: <BarChart3 className="w-4 h-4" /> },
+    91→  { id: 'leads', label: 'Leads', icon: <Users className="w-4 h-4" /> },
+    92→  { id: 'gallery', label: 'Gallery', icon: <Image className="w-4 h-4" /> },
+    93→  { id: 'settings', label: 'Settings', icon: <FileText className="w-4 h-4" /> },
+    94→];
+    95→
+    96→const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+    97→  { value: 'all', label: 'All' },
+    98→  { value: 'new', label: 'New' },
+    99→  { value: 'reviewing', label: 'Reviewing' },
+   100→  { value: 'shortlisted', label: 'Shortlisted' },
+   101→  { value: 'approved', label: 'Approved' },
+   102→  { value: 'rejected', label: 'Rejected' },
+   103→  { value: 'on_hold', label: 'On Hold' },
+   104→];
+   105→
+   106→const GALLERY_CATEGORIES: { value: GalleryCategory; label: string }[] = [
+   107→  { value: 'all', label: 'All' },
+   108→  { value: 'Showroom', label: 'Showroom' },
+   109→  { value: 'Interior', label: 'Interior' },
+   110→  { value: 'Exterior', label: 'Exterior' },
+   111→  { value: 'Events', label: 'Events' },
+   112→  { value: 'Team', label: 'Team' },
+   113→];
+   114→
+   115→const STATUS_CHANGE_OPTIONS = [
+   116→  { value: 'new', label: 'New' },
+   117→  { value: 'reviewing', label: 'Reviewing' },
+   118→  { value: 'shortlisted', label: 'Shortlisted' },
+   119→  { value: 'approved', label: 'Approved' },
+   120→  { value: 'rejected', label: 'Rejected' },
+   121→  { value: 'on_hold', label: 'On Hold' },
+   122→];
+   123→
+   124→// ─── LOGIN VIEW ────────────────────────────────────────────────────────────────
+   125→
+   126→function LoginView() {
+   127→  const { setAdminAuthenticated, setViewMode } = useAppStore();
+   128→  const [username, setUsername] = useState('');
+   129→  const [password, setPassword] = useState('');
+   130→  const [error, setError] = useState('');
+   131→  const [loading, setLoading] = useState(false);
+   132→
+   133→  const handleSubmit = async (e: React.FormEvent) => {
+   134→    e.preventDefault();
+   135→    setError('');
+   136→    setLoading(true);
+   137→    try {
+   138→      const res = await fetch('/api/auth', {
+   139→        method: 'POST',
+   140→        headers: { 'Content-Type': 'application/json' },
+   141→        body: JSON.stringify({ username, password }),
+   142→      });
+   143→      const data = await res.json();
+   144→      if (data.success) {
+   145→        setAdminAuthenticated(true, data.name);
+   146→      } else {
+   147→        setError(data.message || 'Invalid credentials');
+   148→      }
+   149→    } catch {
+   150→      setError('Something went wrong. Please try again.');
+   151→    } finally {
+   152→      setLoading(false);
+   153→    }
+   154→  };
+   155→
+   156→  return (
+   157→    <div className="min-h-screen bg-gray-50 flex items-start justify-center pt-20 px-4">
+   158→      <motion.div
+   159→        initial={{ opacity: 0, y: 20 }}
+   160→        animate={{ opacity: 1, y: 0 }}
+   161→        transition={{ duration: 0.4 }}
+   162→        className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 max-w-md w-full"
+   163→      >
+   164→        {/* Logo */}
+   165→        <div className="flex justify-center mb-6">
+   166→          <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center">
+   167→            <span className="text-white text-2xl font-bold">AE</span>
+   168→          </div>
+   169→        </div>
+   170→
+   171→        <h1 className="text-2xl font-bold text-center text-slate-900 mb-2">Ather Energy Dealership Admin</h1>
+   172→        <p className="text-sm text-slate-500 text-center mb-8">Sign in to manage your Ather Energy Dealership</p>
+   173→
+   174→        {error && (
+   175→          <motion.div
+   176→            initial={{ opacity: 0, height: 0 }}
+   177→            animate={{ opacity: 1, height: 'auto' }}
+   178→            className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6"
+   179→          >
+   180→            <AlertCircle className="w-4 h-4 shrink-0" />
+   181→            {error}
+   182→          </motion.div>
+   183→        )}
+   184→
+   185→        <form onSubmit={handleSubmit} className="space-y-5">
+   186→          <div>
+   187→            <label className="block text-sm font-medium text-slate-700 mb-1.5">Username</label>
+   188→            <input
+   189→              type="text"
+   190→              value={username}
+   191→              onChange={(e) => setUsername(e.target.value)}
+   192→              className="form-input w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   193→              placeholder="Enter username"
+   194→              required
+   195→            />
+   196→          </div>
+   197→          <div>
+   198→            <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+   199→            <input
+   200→              type="password"
+   201→              value={password}
+   202→              onChange={(e) => setPassword(e.target.value)}
+   203→              className="form-input w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   204→              placeholder="Enter password"
+   205→              required
+   206→            />
+   207→          </div>
+   208→          <button
+   209→            type="submit"
+   210→            disabled={loading}
+   211→            className="btn-primary w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+   212→          >
+   213→            {loading ? (
+   214→              <>
+   215→                <Loader2 className="w-4 h-4 animate-spin" />
+   216→                Signing in...
+   217→              </>
+   218→            ) : (
+   219→              'Sign In'
+   220→            )}
+   221→          </button>
+   222→        </form>
+   223→
+   224→        <div className="mt-8 text-center">
+   225→          <button
+   226→            onClick={() => setViewMode('home')}
+   227→            className="text-emerald-600 hover:text-emerald-700 text-sm font-medium transition"
+   228→          >
+   229→            ← Back to site
+   230→          </button>
+   231→        </div>
+   232→      </motion.div>
+   233→    </div>
+   234→  );
+   235→}
+   236→
+   237→// ─── STATUS BADGE ──────────────────────────────────────────────────────────────
+   238→
+   239→function StatusBadge({ status }: { status: string }) {
+   240→  const config = STATUS_BADGES[status] || { label: status, className: 'bg-slate-100 text-slate-600' };
+   241→  return (
+   242→    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.className}`}>
+   243→      {config.label}
+   244→    </span>
+   245→  );
+   246→}
+   247→
+   248→// ─── OVERVIEW TAB ──────────────────────────────────────────────────────────────
+   249→
+   250→function OverviewTab({
+   251→  stats,
+   252→  leads,
+   253→  onViewLead,
+   254→  isLoading,
+   255→}: {
+   256→  stats: DashboardStats | null;
+   257→  leads: Lead[];
+   258→  onViewLead: (lead: Lead) => void;
+   259→  isLoading: boolean;
+   260→}) {
+   261→  const statCards = [
+   262→    {
+   263→      label: 'Total Leads',
+   264→      value: stats?.totalLeads ?? 0,
+   265→      icon: <Users className="w-6 h-6" />,
+   266→      bg: 'bg-emerald-50',
+   267→      iconBg: 'bg-emerald-100',
+   268→      iconColor: 'text-emerald-600',
+   269→      border: 'border-emerald-200',
+   270→    },
+   271→    {
+   272→      label: 'New Leads',
+   273→      value: stats?.newLeads ?? 0,
+   274→      icon: <Clock className="w-6 h-6" />,
+   275→      bg: 'bg-blue-50',
+   276→      iconBg: 'bg-blue-100',
+   277→      iconColor: 'text-blue-600',
+   278→      border: 'border-blue-200',
+   279→    },
+   280→    {
+   281→      label: 'Approved',
+   282→      value: stats?.approvedLeads ?? 0,
+   283→      icon: <UserCheck className="w-6 h-6" />,
+   284→      bg: 'bg-green-50',
+   285→      iconBg: 'bg-green-100',
+   286→      iconColor: 'text-green-600',
+   287→      border: 'border-green-200',
+   288→    },
+   289→    {
+   290→      label: 'Rejected',
+   291→      value: stats?.rejectedLeads ?? 0,
+   292→      icon: <UserX className="w-6 h-6" />,
+   293→      bg: 'bg-red-50',
+   294→      iconBg: 'bg-red-100',
+   295→      iconColor: 'text-red-600',
+   296→      border: 'border-red-200',
+   297→    },
+   298→  ];
+   299→
+   300→  const recentLeads = leads.slice(0, 5);
+   301→
+   302→  if (isLoading) {
+   303→    return (
+   304→      <div className="flex items-center justify-center py-20">
+   305→        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+   306→      </div>
+   307→    );
+   308→  }
+   309→
+   310→  return (
+   311→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+   312→      {/* Stat Cards */}
+   313→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+   314→        {statCards.map((card) => (
+   315→          <div
+   316→            key={card.label}
+   317→            className={`premium-card ${card.bg} ${card.border} border rounded-xl p-5 flex items-center gap-4`}
+   318→          >
+   319→            <div className={`${card.iconBg} ${card.iconColor} p-3 rounded-lg`}>
+   320→              {card.icon}
+   321→            </div>
+   322→            <div>
+   323→              <p className="text-2xl font-bold text-slate-900">{card.value}</p>
+   324→              <p className="text-sm text-slate-500">{card.label}</p>
+   325→            </div>
+   326→          </div>
+   327→        ))}
+   328→      </div>
+   329→
+   330→      {/* Quick Stats */}
+   331→      {stats && (
+   332→        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   333→          <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+   334→            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+   335→              <BarChart3 className="w-5 h-5 text-emerald-600" />
+   336→            </div>
+   337→            <div>
+   338→              <p className="text-xs text-slate-500">Leads this week</p>
+   339→              <p className="text-lg font-semibold text-slate-900">{stats.leadsThisWeek}</p>
+   340→            </div>
+   341→          </div>
+   342→          <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+   343→            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+   344→              <CheckCircle2 className="w-5 h-5 text-blue-600" />
+   345→            </div>
+   346→            <div>
+   347→              <p className="text-xs text-slate-500">Conversion rate</p>
+   348→              <p className="text-lg font-semibold text-slate-900">{stats.conversionRate}</p>
+   349→            </div>
+   350→          </div>
+   351→          <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+   352→            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+   353→              <ArrowUpDown className="w-5 h-5 text-purple-600" />
+   354→            </div>
+   355→            <div>
+   356→              <p className="text-xs text-slate-500">Avg investment capacity</p>
+   357→              <p className="text-lg font-semibold text-slate-900">{stats.avgInvestment}</p>
+   358→            </div>
+   359→          </div>
+   360→        </div>
+   361→      )}
+   362→
+   363→      {/* Recent Leads Table */}
+   364→      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+   365→        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+   366→          <h3 className="font-semibold text-slate-900">Recent Leads</h3>
+   367→          <span className="text-xs text-slate-400">Last {recentLeads.length} entries</span>
+   368→        </div>
+   369→        <div className="overflow-x-auto">
+   370→          <table className="admin-table w-full">
+   371→            <thead>
+   372→              <tr className="border-b border-slate-100">
+   373→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
+   374→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Phone</th>
+   375→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">City</th>
+   376→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Investment</th>
+   377→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+   378→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+   379→                <th className="text-left px-6 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Action</th>
+   380→              </tr>
+   381→            </thead>
+   382→            <tbody className="divide-y divide-slate-100">
+   383→              {recentLeads.map((lead) => (
+   384→                <tr key={lead.id} className="hover:bg-slate-50 transition">
+   385→                  <td className="px-6 py-3 text-sm font-medium text-slate-900">{lead.fullName}</td>
+   386→                  <td className="px-6 py-3 text-sm text-slate-600">{lead.phone}</td>
+   387→                  <td className="px-6 py-3 text-sm text-slate-600">{lead.city}</td>
+   388→                  <td className="px-6 py-3 text-sm text-slate-600">{lead.investmentCapacity}</td>
+   389→                  <td className="px-6 py-3">
+   390→                    <StatusBadge status={lead.status} />
+   391→                  </td>
+   392→                  <td className="px-6 py-3 text-sm text-slate-500">{lead.createdAt?.split('T')[0] ?? '—'}</td>
+   393→                  <td className="px-6 py-3">
+   394→                    <button
+   395→                      onClick={() => onViewLead(lead)}
+   396→                      className="text-emerald-600 hover:text-emerald-700 transition"
+   397→                      title="View details"
+   398→                    >
+   399→                      <Eye className="w-4 h-4" />
+   400→                    </button>
+   401→                  </td>
+   402→                </tr>
+   403→              ))}
+   404→              {recentLeads.length === 0 && (
+   405→                <tr>
+   406→                  <td colSpan={7} className="px-6 py-8 text-center text-sm text-slate-400">
+   407→                    No leads yet
+   408→                  </td>
+   409→                </tr>
+   410→              )}
+   411→            </tbody>
+   412→          </table>
+   413→        </div>
+   414→      </div>
+   415→    </motion.div>
+   416→  );
+   417→}
+   418→
+   419→// ─── LEADS TAB ─────────────────────────────────────────────────────────────────
+   420→
+   421→function LeadsTab({
+   422→  leads,
+   423→  onViewLead,
+   424→  onStatusChange,
+   425→  isLoading,
+   426→  searchQuery,
+   427→  setSearchQuery,
+   428→  statusFilter,
+   429→  setStatusFilter,
+   430→}: {
+   431→  leads: Lead[];
+   432→  onViewLead: (lead: Lead) => void;
+   433→  onStatusChange: (id: number, status: string) => void;
+   434→  isLoading: boolean;
+   435→  searchQuery: string;
+   436→  setSearchQuery: (q: string) => void;
+   437→  statusFilter: StatusFilter;
+   438→  setStatusFilter: (f: StatusFilter) => void;
+   439→}) {
+   440→  const [visibleCount, setVisibleCount] = useState(20);
+   441→  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+   442→
+   443→  const filteredLeads = leads
+   444→    .filter((l) => {
+   445→      const matchSearch =
+   446→        !searchQuery ||
+   447→        l.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+   448→        l.phone.includes(searchQuery) ||
+   449→        l.city.toLowerCase().includes(searchQuery.toLowerCase());
+   450→      const matchStatus = statusFilter === 'all' || l.status === statusFilter;
+   451→      return matchSearch && matchStatus;
+   452→    })
+   453→    .sort((a, b) => {
+   454→      const dateA = new Date(a.createdAt).getTime();
+   455→      const dateB = new Date(b.createdAt).getTime();
+   456→      return sortDir === 'desc' ? dateB - dateA : dateA - dateB;
+   457→    });
+   458→
+   459→  const displayedLeads = filteredLeads.slice(0, visibleCount);
+   460→  const hasMore = visibleCount < filteredLeads.length;
+   461→
+   462→  const handleExport = async () => {
+   463→    try {
+   464→      const res = await fetch('/api/leads/export');
+   465→      if (!res.ok) throw new Error('Export failed');
+   466→      const blob = await res.blob();
+   467→      const url = URL.createObjectURL(blob);
+   468→      const a = document.createElement('a');
+   469→      a.href = url;
+   470→      a.download = `leads-export-${new Date().toISOString().split('T')[0]}.csv`;
+   471→      document.body.appendChild(a);
+   472→      a.click();
+   473→      document.body.removeChild(a);
+   474→      URL.revokeObjectURL(url);
+   475→    } catch {
+   476→      alert('Failed to export leads. Please try again.');
+   477→    }
+   478→  };
+   479→
+   480→  if (isLoading) {
+   481→    return (
+   482→      <div className="flex items-center justify-center py-20">
+   483→        <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+   484→      </div>
+   485→    );
+   486→  }
+   487→
+   488→  return (
+   489→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+   490→      {/* Controls */}
+   491→      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+   492→        <div className="flex flex-col sm:flex-row gap-3 flex-1 w-full sm:w-auto">
+   493→          {/* Search */}
+   494→          <div className="relative flex-1 max-w-md">
+   495→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+   496→            <input
+   497→              type="text"
+   498→              value={searchQuery}
+   499→              onChange={(e) => setSearchQuery(e.target.value)}
+   500→              placeholder="Search leads..."
+   501→              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   502→            />
+   503→            {searchQuery && (
+   504→              <button
+   505→                onClick={() => setSearchQuery('')}
+   506→                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+   507→              >
+   508→                <X className="w-4 h-4" />
+   509→              </button>
+   510→            )}
+   511→          </div>
+   512→          {/* Status Filter */}
+   513→          <div className="relative">
+   514→            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+   515→            <select
+   516→              value={statusFilter}
+   517→              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+   518→              className="pl-10 pr-8 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition appearance-none cursor-pointer"
+   519→            >
+   520→              {STATUS_OPTIONS.map((opt) => (
+   521→                <option key={opt.value} value={opt.value}>
+   522→                  {opt.label}
+   523→                </option>
+   524→              ))}
+   525→            </select>
+   526→          </div>
+   527→        </div>
+   528→        <div className="flex gap-2 items-center">
+   529→          <button
+   530→            onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+   531→            className="flex items-center gap-1.5 px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition"
+   532→            title="Toggle sort"
+   533→          >
+   534→            <ArrowUpDown className="w-4 h-4" />
+   535→            {sortDir === 'desc' ? 'Newest' : 'Oldest'}
+   536→          </button>
+   537→          <button
+   538→            onClick={handleExport}
+   539→            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition"
+   540→          >
+   541→            <Download className="w-4 h-4" />
+   542→            Export
+   543→          </button>
+   544→        </div>
+   545→      </div>
+   546→
+   547→      {/* Results count */}
+   548→      <p className="text-sm text-slate-500">
+   549→        Showing {displayedLeads.length} of {filteredLeads.length} leads
+   550→      </p>
+   551→
+   552→      {/* Table */}
+   553→      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+   554→        <div className="overflow-x-auto">
+   555→          <table className="admin-table w-full">
+   556→            <thead>
+   557→              <tr className="border-b border-slate-200 bg-slate-50">
+   558→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider w-10">#</th>
+   559→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Name</th>
+   560→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Phone</th>
+   561→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">City</th>
+   562→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">State</th>
+   563→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Investment</th>
+   564→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+   565→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+   566→                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+   567→              </tr>
+   568→            </thead>
+   569→            <tbody className="divide-y divide-slate-100">
+   570→              {displayedLeads.map((lead, idx) => (
+   571→                <tr key={lead.id} className="hover:bg-slate-50 transition">
+   572→                  <td className="px-4 py-3 text-sm text-slate-400">{idx + 1}</td>
+   573→                  <td className="px-4 py-3 text-sm font-medium text-slate-900">{lead.fullName}</td>
+   574→                  <td className="px-4 py-3 text-sm text-slate-600">{lead.phone}</td>
+   575→                  <td className="px-4 py-3 text-sm text-slate-600">{lead.city}</td>
+   576→                  <td className="px-4 py-3 text-sm text-slate-600">{lead.state}</td>
+   577→                  <td className="px-4 py-3 text-sm text-slate-600">{lead.investmentCapacity}</td>
+   578→                  <td className="px-4 py-3">
+   579→                    <StatusBadge status={lead.status} />
+   580→                  </td>
+   581→                  <td className="px-4 py-3 text-sm text-slate-500">{lead.createdAt?.split('T')[0] ?? '—'}</td>
+   582→                  <td className="px-4 py-3">
+   583→                    <div className="flex items-center gap-2">
+   584→                      <button
+   585→                        onClick={() => onViewLead(lead)}
+   586→                        className="text-emerald-600 hover:text-emerald-700 transition p-1 rounded hover:bg-emerald-50"
+   587→                        title="View details"
+   588→                      >
+   589→                        <Eye className="w-4 h-4" />
+   590→                      </button>
+   591→                      <select
+   592→                        value={lead.status}
+   593→                        onChange={(e) => onStatusChange(lead.id, e.target.value)}
+   594→                        className="text-xs border border-slate-300 rounded px-1.5 py-1 bg-white text-slate-600 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+   595→                        title="Change status"
+   596→                      >
+   597→                        {STATUS_CHANGE_OPTIONS.map((opt) => (
+   598→                          <option key={opt.value} value={opt.value}>
+   599→                            {opt.label}
+   600→                          </option>
+   601→                        ))}
+   602→                      </select>
+   603→                    </div>
+   604→                  </td>
+   605→                </tr>
+   606→              ))}
+   607→              {displayedLeads.length === 0 && (
+   608→                <tr>
+   609→                  <td colSpan={9} className="px-4 py-12 text-center text-sm text-slate-400">
+   610→                    {searchQuery || statusFilter !== 'all' ? 'No leads match your filters' : 'No leads yet'}
+   611→                  </td>
+   612→                </tr>
+   613→              )}
+   614→            </tbody>
+   615→          </table>
+   616→        </div>
+   617→      </div>
+   618→
+   619→      {/* Show More */}
+   620→      {hasMore && (
+   621→        <div className="flex justify-center">
+   622→          <button
+   623→            onClick={() => setVisibleCount((c) => c + 20)}
+   624→            className="px-6 py-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition"
+   625→          >
+   626→            Show More ({filteredLeads.length - visibleCount} remaining)
+   627→          </button>
+   628→        </div>
+   629→      )}
+   630→    </motion.div>
+   631→  );
+   632→}
+   633→
+   634→// ─── LEAD DETAIL VIEW ──────────────────────────────────────────────────────────
+   635→
+   636→function LeadDetailView({
+   637→  lead,
+   638→  onBack,
+   639→}: {
+   640→  lead: Lead;
+   641→  onBack: () => void;
+   642→}) {
+   643→  const [status, setStatus] = useState(lead.status);
+   644→  const [adminNotes, setAdminNotes] = useState(lead.adminNotes || '');
+   645→  const [saving, setSaving] = useState(false);
+   646→  const [saved, setSaved] = useState(false);
+   647→
+   648→  const handleSave = async () => {
+   649→    setSaving(true);
+   650→    setSaved(false);
+   651→    try {
+   652→      await fetch(`/api/leads/${lead.id}`, {
+   653→        method: 'PATCH',
+   654→        headers: { 'Content-Type': 'application/json' },
+   655→        body: JSON.stringify({ adminNotes, status }),
+   656→      });
+   657→      setSaved(true);
+   658→      setTimeout(() => setSaved(false), 2000);
+   659→    } catch {
+   660→      alert('Failed to save changes');
+   661→    } finally {
+   662→      setSaving(false);
+   663→    }
+   664→  };
+   665→
+   666→  const infoRow = (label: string, value?: string | null, icon?: React.ReactNode) => (
+   667→    <div className="flex items-start gap-3 py-2">
+   668→      {icon && <span className="text-slate-400 mt-0.5 shrink-0">{icon}</span>}
+   669→      <div className="min-w-0">
+   670→        <p className="text-xs text-slate-400 uppercase tracking-wide">{label}</p>
+   671→        <p className="text-sm text-slate-900 mt-0.5 break-words">{value || '—'}</p>
+   672→      </div>
+   673→    </div>
+   674→  );
+   675→
+   676→  return (
+   677→    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+   678→      {/* Back button */}
+   679→      <button
+   680→        onClick={onBack}
+   681→        className="flex items-center gap-2 text-sm text-slate-600 hover:text-emerald-600 transition"
+   682→      >
+   683→        <ChevronLeft className="w-4 h-4" />
+   684→        Back to Leads
+   685→      </button>
+   686→
+   687→      {/* Header */}
+   688→      <div className="bg-white border border-slate-200 rounded-xl p-6">
+   689→        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   690→          <div>
+   691→            <h2 className="text-xl font-bold text-slate-900">{lead.fullName}</h2>
+   692→            <p className="text-sm text-slate-500 mt-1">
+   693→              Applied on {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
+   694→            </p>
+   695→          </div>
+   696→          <StatusBadge status={status} />
+   697→        </div>
+   698→      </div>
+   699→
+   700→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   701→        {/* Personal Information */}
+   702→        <div className="premium-card bg-white border border-slate-200 rounded-xl p-6">
+   703→          <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Personal Information</h3>
+   704→          <div className="divide-y divide-slate-100">
+   705→            {infoRow('Full Name', lead.fullName, <Users className="w-4 h-4" />)}
+   706→            {infoRow('Phone', lead.phone, <Phone className="w-4 h-4" />)}
+   707→            {infoRow('WhatsApp', lead.whatsapp, <Phone className="w-4 h-4" />)}
+   708→            {infoRow('Email', lead.email, <Mail className="w-4 h-4" />)}
+   709→            {infoRow('Date of Birth', lead.dob, <Calendar className="w-4 h-4" />)}
+   710→            {infoRow('Education', lead.education)}
+   711→            {infoRow('Occupation', lead.occupation)}
+   712→          </div>
+   713→        </div>
+   714→
+   715→        {/* Business Information */}
+   716→        <div className="premium-card bg-white border border-slate-200 rounded-xl p-6">
+   717→          <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Business Information</h3>
+   718→          <div className="divide-y divide-slate-100">
+   719→            {infoRow('Address', lead.address, <MapPin className="w-4 h-4" />)}
+   720→            {infoRow('City', lead.city)}
+   721→            {infoRow('State', lead.state)}
+   722→            {infoRow('PIN Code', lead.pinCode)}
+   723→            {infoRow('Business Experience', lead.businessExperience)}
+   724→            {infoRow('Investment Capacity', lead.investmentCapacity)}
+   725→            {infoRow('Land Size', lead.landSize)}
+   726→            {infoRow('Preferred Location', lead.preferredLocation)}
+   727→            {infoRow('Timeline', lead.timeline)}
+   728→          </div>
+   729→        </div>
+   730→      </div>
+   731→
+   732→      {/* Admin Section */}
+   733→      <div className="premium-card bg-white border border-slate-200 rounded-xl p-6">
+   734→        <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Admin</h3>
+   735→        <div className="space-y-4">
+   736→          <div>
+   737→            <label className="block text-sm font-medium text-slate-700 mb-1.5">Status</label>
+   738→            <select
+   739→              value={status}
+   740→              onChange={(e) => setStatus(e.target.value)}
+   741→              className="w-full max-w-xs px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   742→            >
+   743→              {STATUS_CHANGE_OPTIONS.map((opt) => (
+   744→                <option key={opt.value} value={opt.value}>
+   745→                  {opt.label}
+   746→                </option>
+   747→              ))}
+   748→            </select>
+   749→          </div>
+   750→          <div>
+   751→            <label className="block text-sm font-medium text-slate-700 mb-1.5">Admin Notes</label>
+   752→            <textarea
+   753→              value={adminNotes}
+   754→              onChange={(e) => setAdminNotes(e.target.value)}
+   755→              rows={4}
+   756→              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition resize-y"
+   757→              placeholder="Add notes about this lead..."
+   758→            />
+   759→          </div>
+   760→          <div className="flex items-center gap-3">
+   761→            <button
+   762→              onClick={handleSave}
+   763→              disabled={saving}
+   764→              className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition flex items-center gap-2 disabled:opacity-60"
+   765→            >
+   766→              {saving ? (
+   767→                <>
+   768→                  <Loader2 className="w-4 h-4 animate-spin" />
+   769→                  Saving...
+   770→                </>
+   771→              ) : saved ? (
+   772→                <>
+   773→                  <CheckCircle2 className="w-4 h-4" />
+   774→                  Saved!
+   775→                </>
+   776→              ) : (
+   777→                'Save Changes'
+   778→              )}
+   779→            </button>
+   780→          </div>
+   781→          <p className="text-xs text-slate-400">
+   782→            Created: {lead.createdAt ? new Date(lead.createdAt).toLocaleString('en-IN') : '—'}
+   783→          </p>
+   784→        </div>
+   785→      </div>
+   786→    </motion.div>
+   787→  );
+   788→}
+   789→
+   790→// ─── GALLERY TAB ───────────────────────────────────────────────────────────────
+   791→
+   792→function GalleryTab({ images, onDelete }: { images: GalleryImage[]; onDelete: (id: number) => void }) {
+   793→  const [categoryFilter, setCategoryFilter] = useState<GalleryCategory>('all');
+   794→
+   795→  const filtered = categoryFilter === 'all' ? images : images.filter((img) => img.category === categoryFilter);
+   796→
+   797→  const handleUpload = () => {
+   798→    alert('Gallery upload requires admin setup');
+   799→  };
+   800→
+   801→  return (
+   802→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+   803→      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+   804→        <div className="flex gap-2 flex-wrap">
+   805→          {GALLERY_CATEGORIES.map((cat) => (
+   806→            <button
+   807→              key={cat.value}
+   808→              onClick={() => setCategoryFilter(cat.value)}
+   809→              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+   810→                categoryFilter === cat.value
+   811→                  ? 'bg-emerald-600 text-white'
+   812→                  : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'
+   813→              }`}
+   814→            >
+   815→              {cat.label}
+   816→            </button>
+   817→          ))}
+   818→        </div>
+   819→        <button
+   820→          onClick={handleUpload}
+   821→          className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition"
+   822→        >
+   823→          <Image className="w-4 h-4" />
+   824→          Upload Image
+   825→        </button>
+   826→      </div>
+   827→
+   828→      {filtered.length === 0 ? (
+   829→        <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+   830→          <Image className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+   831→          <p className="text-sm text-slate-400">No images in this category</p>
+   832→        </div>
+   833→      ) : (
+   834→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+   835→          {filtered.map((img) => (
+   836→            <div key={img.id} className="premium-card bg-white border border-slate-200 rounded-xl overflow-hidden group">
+   837→              <div className="aspect-video bg-slate-100 relative overflow-hidden">
+   838→                {img.imageUrl ? (
+   839→                  <img
+   840→                    src={img.imageUrl}
+   841→                    alt={img.title}
+   842→                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+   843→                  />
+   844→                ) : (
+   845→                  <div className="w-full h-full flex items-center justify-center">
+   846→                    <Image className="w-8 h-8 text-slate-300" />
+   847→                  </div>
+   848→                )}
+   849→                <button
+   850→                  onClick={() => onDelete(img.id)}
+   851→                  className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+   852→                  title="Delete"
+   853→                >
+   854→                  <Trash2 className="w-3.5 h-3.5" />
+   855→                </button>
+   856→              </div>
+   857→              <div className="p-3">
+   858→                <p className="text-sm font-medium text-slate-900 truncate">{img.title}</p>
+   859→                <span className="inline-block mt-1 px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full">
+   860→                  {img.category}
+   861→                </span>
+   862→              </div>
+   863→            </div>
+   864→          ))}
+   865→        </div>
+   866→      )}
+   867→    </motion.div>
+   868→  );
+   869→}
+   870→
+   871→// ─── SETTINGS TAB ──────────────────────────────────────────────────────────────
+   872→
+   873→function SettingsTab() {
+   874→  const [oldPassword, setOldPassword] = useState('');
+   875→  const [newPassword, setNewPassword] = useState('');
+   876→  const [confirmPassword, setConfirmPassword] = useState('');
+   877→  const [saving, setSaving] = useState(false);
+   878→  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+   879→
+   880→  const handleChangePassword = async (e: React.FormEvent) => {
+   881→    e.preventDefault();
+   882→    if (newPassword !== confirmPassword) {
+   883→      setMessage({ type: 'error', text: 'Passwords do not match' });
+   884→      return;
+   885→    }
+   886→    if (newPassword.length < 6) {
+   887→      setMessage({ type: 'error', text: 'Password must be at least 6 characters' });
+   888→      return;
+   889→    }
+   890→    setSaving(true);
+   891→    setMessage(null);
+   892→    try {
+   893→      const res = await fetch('/api/auth/change-password', {
+   894→        method: 'POST',
+   895→        headers: { 'Content-Type': 'application/json' },
+   896→        body: JSON.stringify({ oldPassword, newPassword }),
+   897→      });
+   898→      const data = await res.json();
+   899→      if (data.success) {
+   900→        setMessage({ type: 'success', text: 'Password changed successfully' });
+   901→        setOldPassword('');
+   902→        setNewPassword('');
+   903→        setConfirmPassword('');
+   904→      } else {
+   905→        setMessage({ type: 'error', text: data.message || 'Failed to change password' });
+   906→      }
+   907→    } catch {
+   908→      setMessage({ type: 'error', text: 'Something went wrong' });
+   909→    } finally {
+   910→      setSaving(false);
+   911→    }
+   912→  };
+   913→
+   914→  return (
+   915→    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 max-w-xl">
+   916→      {/* Admin Settings */}
+   917→      <div className="premium-card bg-white border border-slate-200 rounded-xl p-6">
+   918→        <h3 className="text-lg font-semibold text-slate-900 mb-4">Admin Settings</h3>
+   919→        <div className="space-y-4">
+   920→          <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+   921→            <p className="text-sm text-slate-600">Manage your admin account settings and preferences.</p>
+   922→            <p className="text-xs text-slate-400 mt-1">Additional settings will be available in future updates.</p>
+   923→          </div>
+   924→          <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+   925→            <p className="text-sm font-medium text-slate-700">Notification Preferences</p>
+   926→            <p className="text-xs text-slate-400 mt-1">Configure how and when you receive lead notifications.</p>
+   927→          </div>
+   928→        </div>
+   929→      </div>
+   930→
+   931→      {/* Change Password */}
+   932→      <div className="premium-card bg-white border border-slate-200 rounded-xl p-6">
+   933→        <h3 className="text-lg font-semibold text-slate-900 mb-4">Change Password</h3>
+   934→        {message && (
+   935→          <motion.div
+   936→            initial={{ opacity: 0, y: -5 }}
+   937→            animate={{ opacity: 1, y: 0 }}
+   938→            className={`flex items-center gap-2 text-sm px-4 py-3 rounded-lg mb-4 ${
+   939→              message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+   940→            }`}
+   941→          >
+   942→            {message.type === 'success' ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+   943→            {message.text}
+   944→          </motion.div>
+   945→        )}
+   946→        <form onSubmit={handleChangePassword} className="space-y-4">
+   947→          <div>
+   948→            <label className="block text-sm font-medium text-slate-700 mb-1.5">Current Password</label>
+   949→            <input
+   950→              type="password"
+   951→              value={oldPassword}
+   952→              onChange={(e) => setOldPassword(e.target.value)}
+   953→              className="form-input w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   954→              required
+   955→            />
+   956→          </div>
+   957→          <div>
+   958→            <label className="block text-sm font-medium text-slate-700 mb-1.5">New Password</label>
+   959→            <input
+   960→              type="password"
+   961→              value={newPassword}
+   962→              onChange={(e) => setNewPassword(e.target.value)}
+   963→              className="form-input w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   964→              required
+   965→            />
+   966→          </div>
+   967→          <div>
+   968→            <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirm New Password</label>
+   969→            <input
+   970→              type="password"
+   971→              value={confirmPassword}
+   972→              onChange={(e) => setConfirmPassword(e.target.value)}
+   973→              className="form-input w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+   974→              required
+   975→            />
+   976→          </div>
+   977→          <button
+   978→            type="submit"
+   979→            disabled={saving}
+   980→            className="px-5 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition flex items-center gap-2 disabled:opacity-60"
+   981→          >
+   982→            {saving ? (
+   983→              <>
+   984→                <Loader2 className="w-4 h-4 animate-spin" />
+   985→                Changing...
+   986→              </>
+   987→            ) : (
+   988→              'Change Password'
+   989→            )}
+   990→          </button>
+   991→        </form>
+   992→      </div>
+   993→    </motion.div>
+   994→  );
+   995→}
+   996→
+   997→// ─── MAIN ADMIN PANEL ──────────────────────────────────────────────────────────
+   998→
+   999→export function AdminPanel() {
+  1000→  const { adminAuthenticated, adminName, setAdminAuthenticated } = useAppStore();
+  1001→
+  1002→  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  1003→  const [leads, setLeads] = useState<Lead[]>([]);
+  1004→  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  1005→  const [isLoading, setIsLoading] = useState(true);
+  1006→  const [searchQuery, setSearchQuery] = useState('');
+  1007→  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  1008→  const [stats, setStats] = useState<DashboardStats | null>(null);
+  1009→  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  1010→
+  1011→  const fetchDashboardData = useCallback(async () => {
+  1012→    setIsLoading(true);
+  1013→    try {
+  1014→      const [leadsRes, dashRes, galleryRes] = await Promise.allSettled([
+  1015→        fetch('/api/leads'),
+  1016→        fetch('/api/admin/dashboard'),
+  1017→        fetch('/api/gallery'),
+  1018→      ]);
+  1019→
+  1020→      if (leadsRes.status === 'fulfilled' && leadsRes.value.ok) {
+  1021→        const data = safeData(await leadsRes.value.json());
+  1022→        setLeads(Array.isArray(data) ? data : data.leads ?? []);
+  1023→      }
+  1024→
+  1025→      if (dashRes.status === 'fulfilled' && dashRes.value.ok) {
+  1026→        setStats(safeData(await dashRes.value.json()));
+  1027→      }
+  1028→
+  1029→      if (galleryRes.status === 'fulfilled' && galleryRes.value.ok) {
+  1030→        const data = safeData(await galleryRes.value.json());
+  1031→        setGalleryImages(Array.isArray(data) ? data : data.images ?? []);
+  1032→      }
+  1033→    } catch {
+  1034→      // Silently handle fetch errors
+  1035→    } finally {
+  1036→      setIsLoading(false);
+  1037→    }
+  1038→  }, []);
+  1039→
+  1040→  useEffect(() => {
+  1041→    if (adminAuthenticated) {
+  1042→      fetchDashboardData();
+  1043→    }
+  1044→  }, [adminAuthenticated, fetchDashboardData]);
+  1045→
+  1046→  const handleLogout = () => {
+  1047→    setAdminAuthenticated(false);
+  1048→    setSelectedLead(null);
+  1049→    setActiveTab('dashboard');
+  1050→    setSearchQuery('');
+  1051→    setStatusFilter('all');
+  1052→  };
+  1053→
+  1054→  const handleStatusChange = async (id: number, status: string) => {
+  1055→    try {
+  1056→      await fetch(`/api/leads/${id}`, {
+  1057→        method: 'PATCH',
+  1058→        headers: { 'Content-Type': 'application/json' },
+  1059→        body: JSON.stringify({ status }),
+  1060→      });
+  1061→      setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
+  1062→    } catch {
+  1063→      alert('Failed to update status');
+  1064→    }
+  1065→  };
+  1066→
+  1067→  const handleDeleteImage = async (id: number) => {
+  1068→    if (!confirm('Are you sure you want to delete this image?')) return;
+  1069→    try {
+  1070→      await fetch(`/api/gallery/${id}`, { method: 'DELETE' });
+  1071→      setGalleryImages((prev) => prev.filter((img) => img.id !== id));
+  1072→    } catch {
+  1073→      alert('Failed to delete image');
+  1074→    }
+  1075→  };
+  1076→
+  1077→  // ─── LOGIN VIEW
+  1078→  if (!adminAuthenticated) {
+  1079→    return <LoginView />;
+  1080→  }
+  1081→
+  1082→  // ─── LEAD DETAIL VIEW
+  1083→  if (selectedLead) {
+  1084→    return (
+  1085→      <div className="w-full min-h-screen bg-gray-50">
+  1086→        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+  1087→          <LeadDetailView
+  1088→            lead={selectedLead}
+  1089→            onBack={() => setSelectedLead(null)}
+  1090→          />
+  1091→        </div>
+  1092→      </div>
+  1093→    );
+  1094→  }
+  1095→
+  1096→  // ─── DASHBOARD VIEW
+  1097→  return (
+  1098→    <div className="w-full min-h-screen bg-gray-50">
+  1099→      {/* Top Bar */}
+  1100→      <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-10">
+  1101→        <div className="flex items-center gap-3">
+  1102→          <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center">
+  1103→            <span className="text-white text-xs font-bold">AE</span>
+  1104→          </div>
+  1105→          <div>
+  1106→            <p className="text-lg font-bold text-slate-900 leading-tight">Ather Energy Dealership</p>
+  1107→            <p className="text-xs text-slate-400 leading-tight">Admin Dashboard</p>
+  1108→          </div>
+  1109→        </div>
+  1110→        <div className="flex items-center gap-4">
+  1111→          <span className="text-sm text-slate-600 hidden sm:block">Welcome, {adminName || 'Admin'}</span>
+  1112→          <button
+  1113→            onClick={handleLogout}
+  1114→            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-red-500 transition"
+  1115→          >
+  1116→            <LogOut className="w-4 h-4" />
+  1117→            <span className="hidden sm:inline">Logout</span>
+  1118→          </button>
+  1119→        </div>
+  1120→      </header>
+  1121→
+  1122→      {/* Tab Bar */}
+  1123→      <nav className="bg-white border-b border-slate-200">
+  1124→        <div className="max-w-7xl mx-auto px-6">
+  1125→          <div className="flex gap-0 -mb-px overflow-x-auto">
+  1126→            {TAB_CONFIG.map((tab) => (
+  1127→              <button
+  1128→                key={tab.id}
+  1129→                onClick={() => setActiveTab(tab.id)}
+  1130→                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+  1131→                  activeTab === tab.id
+  1132→                    ? 'text-emerald-600 border-emerald-600'
+  1133→                    : 'text-slate-500 border-transparent hover:text-slate-700 hover:border-slate-300'
+  1134→                }`}
+  1135→              >
+  1136→                {tab.icon}
+  1137→                {tab.label}
+  1138→              </button>
+  1139→            ))}
+  1140→          </div>
+  1141→        </div>
+  1142→      </nav>
+  1143→
+  1144→      {/* Tab Content */}
+  1145→      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+  1146→        <AnimatePresence mode="wait">
+  1147→          {activeTab === 'dashboard' && (
+  1148→            <OverviewTab
+  1149→              key="overview"
+  1150→              stats={stats}
+  1151→              leads={leads}
+  1152→              onViewLead={(lead) => {
+  1153→                setSelectedLead(lead);
+  1154→                setActiveTab('leads');
+  1155→              }}
+  1156→              isLoading={isLoading}
+  1157→            />
+  1158→          )}
+  1159→          {activeTab === 'leads' && (
+  1160→            <LeadsTab
+  1161→              key="leads"
+  1162→              leads={leads}
+  1163→              onViewLead={setSelectedLead}
+  1164→              onStatusChange={handleStatusChange}
+  1165→              isLoading={isLoading}
+  1166→              searchQuery={searchQuery}
+  1167→              setSearchQuery={setSearchQuery}
+  1168→              statusFilter={statusFilter}
+  1169→              setStatusFilter={setStatusFilter}
+  1170→            />
+  1171→          )}
+  1172→          {activeTab === 'gallery' && (
+  1173→            <GalleryTab key="gallery" images={galleryImages} onDelete={handleDeleteImage} />
+  1174→          )}
+  1175→          {activeTab === 'settings' && <SettingsTab key="settings" />}
+  1176→        </AnimatePresence>
+  1177→      </main>
+  1178→    </div>
+  1179→  );
+  1180→}
