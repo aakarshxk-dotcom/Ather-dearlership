@@ -10,7 +10,8 @@
     ]
   },
   "deploy": {
-    "startCommand": "npx prisma db push --skip-generate && npx tsx scripts/seed.ts && node .next/standalone/server.js",
+    "startCommand": "node .next/standalone/server.js",
+    "preDeployCommand": "npx prisma db push --skip-generate && npx tsx scripts/seed.ts",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
