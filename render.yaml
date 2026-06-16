@@ -6,7 +6,7 @@ services:
     branch: main
     plan: free
     buildCommand: npm install --legacy-peer-deps && npm run build
-    startCommand: npx tsx scripts/deploy.ts; node .next/standalone/server.js
+    startCommand: bash start.sh
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION

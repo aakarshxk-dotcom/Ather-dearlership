@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, CheckCircle2, Loader2, Send, User, Mail, Phone, MapPin, MessageSquare } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, Send, User, Mail, Phone, MapPin, MessageSquare, AlertTriangle } from 'lucide-react';
 import { useAppStore } from '@/store/app';
 
 interface FormData {
@@ -69,12 +69,14 @@ export function ApplicationForm() {
   const { setViewMode } = useAppStore();
   const [form, setForm] = useState<FormData>(INITIAL);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [submitError, setSubmitError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const handleChange = (field: keyof FormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
+    if (submitError) setSubmitError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,32 +87,41 @@ export function ApplicationForm() {
       return;
     }
 
+    const payload = {
+      fullName: form.fullName,
+      email: form.email,
+      phone: form.mobile,
+      whatsapp: form.whatsapp || form.mobile,
+      city: form.city,
+      state: form.state,
+      country: form.country,
+      pinCode: form.pinCode,
+      feedbackMessage: form.feedback,
+    };
+
+    console.log('[ApplicationForm] Submitting payload:', payload);
+
     setSubmitting(true);
+    setSubmitError('');
     try {
       const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName: form.fullName,
-          email: form.email,
-          phone: form.mobile,
-          whatsapp: form.whatsapp || form.mobile,
-          city: form.city,
-          state: form.state,
-          country: form.country,
-          pinCode: form.pinCode,
-          feedbackMessage: form.feedback,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
+      console.log('[ApplicationForm] API response:', data);
+
       if (data.success) {
         setSuccess(true);
       } else {
-        setErrors({ fullName: data.error || 'Something went wrong' });
+        setSubmitError(data.error || 'Something went wrong');
       }
-    } catch {
-      setErrors({ fullName: 'Network error. Please try again.' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Network error. Please try again.';
+      console.error('[ApplicationForm] Network error:', err);
+      setSubmitError(message);
     } finally {
       setSubmitting(false);
     }
@@ -178,6 +189,16 @@ export function ApplicationForm() {
           className="bg-white rounded-2xl shadow-lg shadow-black/5 border border-gray-100 overflow-hidden"
         >
           <div className="h-1.5 bg-gradient-to-r from-[#059669] to-[#10B981]" />
+
+          {submitError && (
+            <div className="mx-6 md:mx-10 mt-6 flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+              <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium">Submission failed</p>
+                <p className="text-red-600 text-xs mt-0.5">{submitError}</p>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="p-6 md:p-10 space-y-6">
             <div>

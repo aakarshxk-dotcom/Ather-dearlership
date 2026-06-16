@@ -6,9 +6,12 @@ import { sendNewLeadEmail } from '@/lib/email';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('[Leads API] POST request body:', JSON.stringify(body));
+
     const required = ['fullName', 'phone', 'email', 'city', 'state', 'pinCode'];
     for (const field of required) {
       if (!body[field]) {
+        console.warn('[Leads API] Missing required field:', field);
         return NextResponse.json(
           { success: false, error: `${field} is required` },
           { status: 400 }
@@ -33,16 +36,34 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    sendNewLeadEmail(lead).catch(() => {});
+    console.log('[Leads API] Lead created successfully:', lead.id);
+
+    sendNewLeadEmail(lead).catch((err) => {
+      console.warn('[Leads API] Email send skipped or failed:', err);
+    });
 
     return NextResponse.json(
       { success: true, id: lead.id, message: 'Application submitted successfully' },
       { status: 201 }
     );
   } catch (error) {
-    console.error('Leads POST error:', error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : '';
+    console.error('[Leads API] POST error:', errMsg);
+    console.error('[Leads API] Stack:', errStack);
+
+    const isDbError = errMsg.toLowerCase().includes('connect') ||
+                      errMsg.toLowerCase().includes('timeout') ||
+                      errMsg.toLowerCase().includes('does not exist') ||
+                      errMsg.toLowerCase().includes('relation');
+
     return NextResponse.json(
-      { success: false, error: 'Failed to submit application' },
+      {
+        success: false,
+        error: isDbError
+          ? 'Database connection error. Please ensure the database is set up correctly.'
+          : `Failed to submit application: ${errMsg}`,
+      },
       { status: 500 }
     );
   }
