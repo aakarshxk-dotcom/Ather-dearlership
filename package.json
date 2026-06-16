@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "npx next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/public",
+    "build": "npx next build --no-turbopack && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/public",
     "start": "node .next/standalone/server.js",
     "lint": "eslint src/",
     "type-check": "tsc --noEmit",
