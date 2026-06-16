@@ -8,4 +8,4 @@ cmds = ["npm install --legacy-peer-deps"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "npx prisma db push --skip-generate && npx tsx scripts/seed.ts && node .next/standalone/server.js"
+cmd = "node -r dotenv/config .next/standalone/server.js"
