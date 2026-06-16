@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
-import * as XLSX from 'xlsx';
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,67 +23,23 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    const data = leads.map((l) => ({
-      'Lead ID': l.id,
-      'Full Name': l.fullName,
-      'Email': l.email,
-      'Mobile': l.phone,
-      'WhatsApp': l.whatsapp,
-      'City': l.city,
-      'State': l.state,
-      'Country': l.country,
-      'PIN Code': l.pinCode,
-      'Feedback': l.feedbackMessage || '',
-      'Status': l.status,
-      'Source': l.source,
-      'Admin Notes': l.adminNotes || '',
-      'Date Submitted': l.createdAt.toISOString(),
-    }));
+    if (format === 'csv') {
+      const header = 'Name,Email,Phone,WhatsApp,City,State,Country,Pincode,Feedback,Status,Created\n';
+      const rows = leads.map(l =>
+        `"${l.fullName}","${l.email}","${l.phone}","${l.whatsapp}","${l.city}","${l.state}","${l.country}","${l.pinCode}","${(l.feedbackMessage || '').replace(/"/g, '""')}","${l.status}","${l.createdAt.toISOString()}"`
+      ).join('\n');
 
-    if (format === 'excel') {
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(data);
-      XLSX.utils.book_append_sheet(wb, ws, 'Leads');
-      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-
-      return new NextResponse(buf, {
-        headers: {
-          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'Content-Disposition': `attachment; filename="leads-export-${new Date().toISOString().split('T')[0]}.xlsx"`,
-        },
-      });
-    }
-
-    if (data.length === 0) {
-      return new NextResponse('', {
+      return new NextResponse(header + rows, {
         headers: {
           'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="leads-export-${new Date().toISOString().split('T')[0]}.csv"`,
+          'Content-Disposition': `attachment; filename="ather-leads-${new Date().toISOString().split('T')[0]}.csv"`,
         },
       });
     }
 
-    const headers = Object.keys(data[0]);
-    const csvRows = [
-      headers.join(','),
-      ...data.map((row) =>
-        headers.map((h) => {
-          const val = String(row[h as keyof typeof row] || '');
-          return val.includes(',') || val.includes('"') || val.includes('\n')
-            ? `"${val.replace(/"/g, '""')}"`
-            : val;
-        }).join(',')
-      ),
-    ];
-
-    return new NextResponse(csvRows.join('\n'), {
-      headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="leads-export-${new Date().toISOString().split('T')[0]}.csv"`,
-      },
-    });
+    return NextResponse.json({ leads });
   } catch (error) {
-    console.error('Leads export error:', error);
-    return NextResponse.json({ error: 'Failed to export leads' }, { status: 500 });
+    console.error('Export error:', error);
+    return NextResponse.json({ error: 'Export failed' }, { status: 500 });
   }
 }
