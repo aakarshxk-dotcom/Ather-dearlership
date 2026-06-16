@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: true,
+  webpack: (config) => {
+    return config;
+  },
 };
 
 export default nextConfig;
