@@ -11,7 +11,7 @@
   },
   "deploy": {
     "startCommand": "node -r dotenv/config .next/standalone/server.js",
-    "preDeployCommand": "npx dotenv -- npx prisma db push --skip-generate && npx dotenv -- npx tsx scripts/seed.ts",
+    "preDeployCommand": "npx tsx scripts/deploy.ts",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
