@@ -1,25 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createLogoutCookie, verifyToken } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { NextResponse } from 'next/server';
+import { deleteSession, createLogoutCookie } from '@/lib/auth';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const token = request.cookies.get('auth-token')?.value;
-    if (token) {
-      const payload = await verifyToken(token);
-      if (payload) {
-        await Promise.all([
-          db.admin.update({
-            where: { id: payload.id },
-            data: { activeSessionId: null, activeSessionExpires: null },
-          }),
-          db.adminSession.updateMany({
-            where: { adminId: payload.id, sessionId: payload.sessionId },
-            data: { isValid: false },
-          }),
-        ]);
-      }
-    }
+    await deleteSession();
   } catch {}
 
   const response = NextResponse.json({ success: true });

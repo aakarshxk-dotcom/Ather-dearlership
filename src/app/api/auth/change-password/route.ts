@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth';
-import { createHash } from 'crypto';
-
-function hashPassword(password: string): string {
-  return createHash('sha256').update(password).digest('hex');
-}
+import bcrypt from 'bcryptjs';
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -26,13 +22,19 @@ export async function PATCH(request: NextRequest) {
     }
 
     const admin = await db.admin.findUnique({ where: { id: user.id } });
-    if (!admin || admin.password !== hashPassword(currentPassword)) {
+    if (!admin) {
+      return NextResponse.json({ error: 'Admin not found' }, { status: 400 });
+    }
+
+    const valid = await bcrypt.compare(currentPassword, admin.passwordHash);
+    if (!valid) {
       return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
     }
 
+    const newHash = await bcrypt.hash(newPassword, 10);
     await db.admin.update({
       where: { id: user.id },
-      data: { password: hashPassword(newPassword) },
+      data: { passwordHash: newHash },
     });
 
     return NextResponse.json({ success: true, message: 'Password updated successfully' });
