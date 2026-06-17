@@ -41,6 +41,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log("DB KEYS:", Object.keys(db));
+    console.log("TYPE adminSession:", typeof db.adminSession);
+    console.log("TYPE admin:", typeof db.admin);
+    console.log("HAS adminSession:", db && typeof db === 'object' && 'adminSession' in db);
+
     const sessionId = generateSessionId();
     const deviceId = request.headers.get('x-device-id') || 'unknown';
     const userAgent = request.headers.get('user-agent') || '';
