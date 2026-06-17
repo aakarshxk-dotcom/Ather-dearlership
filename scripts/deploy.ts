@@ -3,7 +3,6 @@ import { execSync } from 'child_process';
 
 console.log('=== Database Setup ===');
 console.log(`DATABASE_URL: ${process.env.DATABASE_URL ? 'set (' + process.env.DATABASE_URL.length + ' chars)' : 'NOT SET'}`);
-console.log(`DIRECT_URL: ${process.env.DIRECT_URL ? 'set (' + process.env.DIRECT_URL.length + ' chars)' : 'NOT SET'}`);
 
 // Test basic connectivity first
 try {
@@ -15,12 +14,48 @@ try {
   });
   console.log('Database is reachable!');
 } catch (e) {
-  console.error('Database connectivity test failed. This is expected if the database has not been set up yet.');
-  console.error('Error:', e instanceof Error ? e.message : String(e));
-  process.exit(0); // Non-fatal - server can still start for static pages
+  console.error('Database connectivity test failed. Skipping DB setup.');
+  process.exit(0);
 }
 
-// Push schema
+// Migrate old schema columns if needed (idempotent - safe to run multiple times)
+try {
+  console.log('Running schema migration...');
+  execSync('node -e "
+    const { PrismaClient } = require(\'@prisma/client\');
+    const p = new PrismaClient();
+    (async () => {
+      // Check if old column \'password\' exists
+      const rows = await p.\$queryRawUnsafe(\"SELECT column_name FROM information_schema.columns WHERE table_name=\'Admin\' AND column_name=\'password\'\");
+      if (rows.length > 0) {
+        console.log(\'Old schema detected - migrating...\');
+        await p.\$executeRawUnsafe(\'ALTER TABLE \"Admin\" RENAME COLUMN \"password\" TO \"passwordHash\"\');
+        await p.\$executeRawUnsafe(\'ALTER TABLE \"Admin\" DROP COLUMN IF EXISTS \"isActive\"\');
+        await p.\$executeRawUnsafe(\'ALTER TABLE \"Admin\" DROP COLUMN IF EXISTS \"activeSessionId\"\');
+        await p.\$executeRawUnsafe(\'ALTER TABLE \"Admin\" DROP COLUMN IF EXISTS \"activeSessionExpires\"\');
+        await p.\$executeRawUnsafe(\'ALTER TABLE \"Admin\" DROP COLUMN IF EXISTS \"lastLogin\"\');
+        await p.\$executeRawUnsafe(\'ALTER TABLE \"AdminSession\" RENAME COLUMN \"sessionId\" TO \"token\"\');
+        await p.\$executeRawUnsafe(\'ALTER TABLE \"AdminSession\" DROP COLUMN IF EXISTS \"deviceId\"\');
+        await p.\$executeRawUnsafe(\'ALTER TABLE \"AdminSession\" DROP COLUMN IF EXISTS \"userAgent\"\');
+        await p.\$executeRawUnsafe(\'ALTER TABLE \"AdminSession\" DROP COLUMN IF EXISTS \"ipAddress\"\');
+        await p.\$executeRawUnsafe(\'ALTER TABLE \"AdminSession\" DROP COLUMN IF EXISTS \"lastActive\"\');
+        await p.\$executeRawUnsafe(\'ALTER TABLE \"AdminSession\" DROP COLUMN IF EXISTS \"isValid\"\');
+        await p.\$executeRawUnsafe(\'DELETE FROM \"AdminSession\"\');
+        console.log(\'Migration complete - old sessions cleared\');
+      } else {
+        console.log(\'Schema already up to date\');
+      }
+    })().catch(e => console.error(\'Migration check failed:\', e.message)).finally(() => p.\$disconnect());
+  "', {
+    stdio: 'inherit',
+    env: process.env,
+    timeout: 30000,
+  });
+} catch (e) {
+  console.error('Schema migration step failed (non-fatal):', e instanceof Error ? e.message : e);
+}
+
+// Push schema (creates missing tables/columns, updates Prisma client)
 try {
   console.log('Pushing Prisma schema...');
   execSync('npx prisma db push --skip-generate --accept-data-loss', {
@@ -30,8 +65,7 @@ try {
   });
   console.log('Schema push complete');
 } catch (e) {
-  console.error('Schema push failed:', e instanceof Error ? e.message : e);
-  process.exit(0);
+  console.error('Schema push failed (non-fatal):', e instanceof Error ? e.message : e);
 }
 
 // Seed admin user
