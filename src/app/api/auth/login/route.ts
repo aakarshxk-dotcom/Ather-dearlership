@@ -9,6 +9,8 @@ function hashPassword(password: string): string {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("LOGIN HIT");
+    console.log("DB URL EXISTS:", !!process.env.DATABASE_URL);
     const body = await request.json();
     const { username, password } = body;
 
@@ -21,9 +23,16 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = hashPassword(password);
 
-    const admin = await db.admin.findFirst({
-      where: { username, password: hashedPassword, isActive: true },
-    });
+    let admin;
+    try {
+      admin = await db.admin.findFirst({
+        where: { username, password: hashedPassword, isActive: true },
+      });
+      console.log("ADMIN FOUND:", !!admin);
+    } catch (err) {
+      console.log("PRISMA ERROR:", err);
+      throw err;
+    }
 
     if (!admin) {
       return NextResponse.json(
@@ -84,10 +93,14 @@ export async function POST(request: NextRequest) {
     response.cookies.set(createAuthCookie(token));
     return response;
   } catch (error) {
-    console.error('Auth login error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error("🚨 LOGIN ERROR FULL DUMP:", error);
+
+    return Response.json({
+      success: false,
+      errorName: error?.name || null,
+      errorMessage: error?.message || null,
+      errorCode: error?.code || null,
+      stack: error?.stack || null
+    }, { status: 500 });
   }
 }
