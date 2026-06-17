@@ -52,6 +52,11 @@ export async function POST(request: NextRequest) {
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
+    // --- PRE .create() DIAGNOSTIC ---
+    console.log("CREATE CALL REACHED: adminSession.create");
+    console.log("OBJECT: db.adminSession");
+    console.log("VALUE:", db.adminSession);
+
     if (admin.activeSessionId) {
       await db.adminSession.updateMany({
         where: { adminId: admin.id, isValid: true },
