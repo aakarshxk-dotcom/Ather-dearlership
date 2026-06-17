@@ -29,6 +29,9 @@ export async function GET() {
     }
   }
 
+  const dbUrl = process.env.DATABASE_URL || '';
+  const dbHost = dbUrl.includes('@') ? dbUrl.split('@')[1]?.split('/')[0] || 'unknown' : 'unknown';
+
   return NextResponse.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -36,6 +39,7 @@ export async function GET() {
     environment: process.env.NODE_ENV || 'production',
     database: dbStatus,
     dbError,
+    dbHost,
     tables,
     note: tables.leadsTable
       ? 'ready'

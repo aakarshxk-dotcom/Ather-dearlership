@@ -52,6 +52,11 @@ export async function POST(request: NextRequest) {
     console.error('[Leads API] POST error:', errMsg);
     console.error('[Leads API] Stack:', errStack);
 
+    const dbUrl = process.env.DATABASE_URL || '';
+    const dbHost = dbUrl.includes('@') ? dbUrl.split('@')[1]?.split('/')[0] || 'unknown' : 'unknown';
+
+    console.error('[Leads API] Active DB endpoint:', dbHost);
+
     const isDbError = errMsg.toLowerCase().includes('connect') ||
                       errMsg.toLowerCase().includes('timeout') ||
                       errMsg.toLowerCase().includes('does not exist') ||
@@ -61,7 +66,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: isDbError
-          ? 'Database connection error. Please ensure the database is set up correctly.'
+          ? `Database connection error. Target: ${dbHost}`
           : `Failed to submit application: ${errMsg}`,
       },
       { status: 500 }
