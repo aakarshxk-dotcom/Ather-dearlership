@@ -15,6 +15,16 @@ if [ -n "$DATABASE_URL" ]; then
   DB_PORT=$(echo "$DATABASE_URL" | sed -n 's/.*@\([^:]*\):\([0-9]*\)\/.*/\2/p')
   echo "[start] DB HOST: ${DB_HOST:-unknown}"
   echo "[start] DB PORT: ${DB_PORT:-unknown}"
+
+  # Validate PgBouncer flags when using Supabase pooler (port 6543)
+  if echo "$DB_PORT" | grep -q '6543'; then
+    if echo "$DATABASE_URL" | grep -q 'pgbouncer=true'; then
+      echo "[start] PgBouncer flags: OK"
+    else
+      echo "[start] WARNING: Port 6543 detected but ?pgbouncer=true is MISSING!"
+      echo "[start] Add '?pgbouncer=true&connection_limit=1' to your DATABASE_URL to prevent 42P05 errors."
+    fi
+  fi
 fi
 echo "[start] JWT_SECRET: ${JWT_SECRET:+set (${#JWT_SECRET} chars)}"
 echo "[start] SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-admin}"

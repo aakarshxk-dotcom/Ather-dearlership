@@ -11,8 +11,13 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 22
+      # IMPORTANT: For Supabase Transaction Pooler (port 6543), DATABASE_URL
+      # MUST include: ?pgbouncer=true&connection_limit=1
+      # Example: postgresql://postgres.project_ref:pass@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+      # This prevents Prisma's "prepared statement already exists" (42P05) error
       - key: DATABASE_URL
         sync: false
+      # DIRECT_URL uses port 5432 (direct, NOT pooler) so Prisma can run migrations
       - key: DIRECT_URL
         sync: false
       - key: JWT_SECRET

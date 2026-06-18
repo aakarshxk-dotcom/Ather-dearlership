@@ -1,8 +1,6 @@
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import { db } from '../src/lib/db';
 import bcrypt from 'bcryptjs';
-
-const prisma = new PrismaClient();
 
 async function main() {
   console.log('Seeding database...');
@@ -11,11 +9,11 @@ async function main() {
   const password = process.env.SEED_ADMIN_PASSWORD || 'admin123';
   const name = process.env.SEED_ADMIN_NAME || 'Admin';
 
-  const existing = await prisma.admin.findUnique({ where: { username } });
+  const existing = await db.admin.findUnique({ where: { username } });
   const passwordHash = await bcrypt.hash(password, 10);
 
   if (!existing) {
-    await prisma.admin.create({
+    await db.admin.create({
       data: {
         username,
         passwordHash,
@@ -26,7 +24,7 @@ async function main() {
     });
     console.log(`Admin user created: ${username}`);
   } else {
-    await prisma.admin.update({
+    await db.admin.update({
       where: { username },
       data: { passwordHash, name },
     });
@@ -40,7 +38,4 @@ main()
   .catch((e) => {
     console.error('Seed failed:', e);
     process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
   });
