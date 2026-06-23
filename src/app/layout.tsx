@@ -14,6 +14,7 @@ const playfair = Playfair_Display({
 });
 
 const GA_MEASUREMENT_ID = "AW-18244322023";
+const GA_MEASUREMENT_ID_2 = "AW-18264254318";
 
 export const metadata: Metadata = {
   title: "Ather Energy Dealership — Partner with India's Leading EV Brand",
@@ -39,6 +40,7 @@ export default function RootLayout({
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
             gtag('config', '${GA_MEASUREMENT_ID}');
+            gtag('config', '${GA_MEASUREMENT_ID_2}');
           `}
         </Script>
       </head>
